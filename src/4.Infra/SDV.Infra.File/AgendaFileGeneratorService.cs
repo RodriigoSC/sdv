@@ -25,8 +25,6 @@ public class AgendaFileGeneratorService : IAgendaFileGeneratorService
 
     public async Task<List<AgendaFile>> GenerateAgendaDataAsync(Agenda agenda)
     {
-        if (agenda.Season == null) throw new ArgumentNullException(nameof(agenda.Season));
-
         var culture = new CultureInfo(agenda.Configuration.Culture);
         var dates = agenda.Season.GetDates();
         var result = new List<AgendaFile>();
@@ -54,7 +52,8 @@ public class AgendaFileGeneratorService : IAgendaFileGeneratorService
                 : date.ToString("d/M/yyyy");
 
             string? calendarName = calendars.FirstOrDefault(h => h.Date.Date == date.Date)?.Content;
-            string? messageName = messages.FirstOrDefault(h => h.Date.Date == date.Date)?.Content;
+            string? messageName  = messages.FirstOrDefault(h => h.Date.Date == date.Date)?.Content;
+
 
             result.Add(new AgendaFile
             {
@@ -86,7 +85,7 @@ public class AgendaFileGeneratorService : IAgendaFileGeneratorService
 
         if (agenda.AgendaType == AgendaType.Weekly && dataList.Any())
         {
-            dayInRowCounter = AddWeeklyStartPadding(rowData, dataList.First().Date, agenda.Configuration.StartOfWeek, includeCalendar, includeMessage);
+            dayInRowCounter = AddWeeklyStartPadding(rowData,dataList[0].Date,agenda.Configuration.StartOfWeek,includeCalendar,includeMessage);
         }
 
         foreach (var dayData in dataList)
@@ -118,7 +117,7 @@ public class AgendaFileGeneratorService : IAgendaFileGeneratorService
 
     #region Private Helpers
 
-    private int GetBlockSize(AgendaType agendaType) => agendaType switch
+    private static int GetBlockSize(AgendaType agendaType) => agendaType switch
     {
         AgendaType.OneDayPerPage => 2,
         AgendaType.TwoDaysPerPage => 4,
@@ -126,7 +125,7 @@ public class AgendaFileGeneratorService : IAgendaFileGeneratorService
         _ => 1
     };
 
-    private void BuildCsvHeader(StringBuilder sb, int blockSize, bool includeCalendar, bool includeMessage)
+    private static void BuildCsvHeader(StringBuilder sb, int blockSize, bool includeCalendar, bool includeMessage)
     {
         var headers = new List<string>();
         for (int i = 1; i <= blockSize; i++)
@@ -140,7 +139,7 @@ public class AgendaFileGeneratorService : IAgendaFileGeneratorService
         sb.AppendLine(string.Join(";", headers));
     }
     
-    private int AddWeeklyStartPadding(List<string> rowData, DateTime firstDate, DayOfWeek startOfWeek, bool includeCalendar, bool includeMessage)
+    private static int AddWeeklyStartPadding(List<string> rowData, DateTime firstDate, DayOfWeek startOfWeek, bool includeCalendar, bool includeMessage)
     {
         int paddingDays = ((int)firstDate.DayOfWeek - (int)startOfWeek + 7) % 7;
         for (int i = 0; i < paddingDays; i++)
@@ -150,7 +149,7 @@ public class AgendaFileGeneratorService : IAgendaFileGeneratorService
         return paddingDays;
     }
 
-    private void AddDayToRow(List<string> rowData, Agenda agenda, AgendaFile dayData, CultureInfo culture, bool includeCalendar, bool includeMessage)
+    private static void AddDayToRow(List<string> rowData, Agenda agenda, AgendaFile dayData, CultureInfo culture, bool includeCalendar, bool includeMessage)
     {
         string formattedDay = agenda.Configuration.DayNumberFormat == DayNumberFormat.DoubleDigit
             ? dayData.Date.Day.ToString("00")
@@ -167,7 +166,7 @@ public class AgendaFileGeneratorService : IAgendaFileGeneratorService
         if (includeMessage) rowData.Add(dayData.MessageName ?? "");
     }
     
-    private void AddPaddingBlock(List<string> rowData, bool includeCalendar, bool includeMessage, string monthValue = "Notas")
+    private static void AddPaddingBlock(List<string> rowData, bool includeCalendar, bool includeMessage, string monthValue = "Notas")
     {
         rowData.Add(""); // DIA
         rowData.Add(""); // SEMANA
@@ -176,7 +175,7 @@ public class AgendaFileGeneratorService : IAgendaFileGeneratorService
         if (includeMessage) rowData.Add("");
     }
 
-    private void AddEndOfRowPadding(List<string> rowData, int blockSize, int dayInRowCounter, AgendaType agendaType, bool includeCalendar, bool includeMessage)
+    private static void AddEndOfRowPadding(List<string> rowData, int blockSize, int dayInRowCounter, AgendaType agendaType, bool includeCalendar, bool includeMessage)
     {
         if (agendaType != AgendaType.Weekly && dayInRowCounter < blockSize)
         {

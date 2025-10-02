@@ -7,5 +7,5 @@ namespace SDV.Infra.File;
 public interface IPlannerFileGeneratorService
 {
     Task<List<PlannerFile>> GeneratePlannerDataAsync(Planner planner);
-    byte[] GeneratePlannerCsv(Planner Planner, IEnumerable<PlannerFile> data);
+    byte[] GeneratePlannerCsv(Planner planner, IEnumerable<PlannerFile> data);
 }

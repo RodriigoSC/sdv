@@ -87,12 +87,14 @@ public sealed class PlannerSeason : IEquatable<PlannerSeason>
 
                 for (int day = 1; day <= daysInMonth; day++)
                 {
-                    var currentDate = new DateTime(year, month, day);
+                    var currentDate = new DateTime(year, month, day, 0, 0, 0, DateTimeKind.Utc);
+
                     if (_daysOfWeek.Contains((Weekday)currentDate.DayOfWeek))
                     {
                         dates.Add(currentDate);
                     }
                 }
+
             }
         }
 

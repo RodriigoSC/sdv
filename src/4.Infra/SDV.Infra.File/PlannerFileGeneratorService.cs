@@ -26,8 +26,6 @@ public class PlannerFileGeneratorService : IPlannerFileGeneratorService
     // Nenhuma alteração necessária neste método.
     public async Task<List<PlannerFile>> GeneratePlannerDataAsync(Planner planner)
     {
-        if (planner.Season == null) throw new ArgumentNullException(nameof(planner.Season));
-
         var culture = new CultureInfo(planner.Configuration.Culture);
         var result = new List<PlannerFile>();
         var dates = planner.Season.GetDates();
@@ -57,9 +55,9 @@ public class PlannerFileGeneratorService : IPlannerFileGeneratorService
             string formattedDay = planner.Configuration.DayNumberFormat == DayNumberFormat.DoubleDigit
                         ? date.ToString("dd/MM/yyyy")
                         : date.ToString("d/M/yyyy");
-
+                        
             string? calendarName = calendars.FirstOrDefault(h => h.Date.Date == date.Date)?.Content;
-            string? messageName = messages.FirstOrDefault(h => h.Date.Date == date.Date)?.Content;
+            string? messageName  = messages.FirstOrDefault(h => h.Date.Date == date.Date)?.Content;
 
             result.Add(new PlannerFile
             {
@@ -146,7 +144,7 @@ public class PlannerFileGeneratorService : IPlannerFileGeneratorService
 
     #region Private Helpers
 
-    private void AddDayDataToRow(List<string> rowData, PlannerFile d, PlannerConfiguration config, CultureInfo culture, bool includeCalendar, bool includeMessage)
+    private static void AddDayDataToRow(List<string> rowData, PlannerFile d, PlannerConfiguration config, CultureInfo culture, bool includeCalendar, bool includeMessage)
     {
         string diaFormatado = config.DayNumberFormat == DayNumberFormat.DoubleDigit ? d.Date.Day.ToString("00") : d.Date.Day.ToString();
         string monthName = config.MonthAbbreviation == MonthAbbreviation.Short
@@ -160,7 +158,7 @@ public class PlannerFileGeneratorService : IPlannerFileGeneratorService
         if (includeMessage) rowData.Add(d.MessageName ?? "");
     }
 
-    private void BuildCsvHeader(StringBuilder sb, int blockSize, bool includeCalendar, bool includeMessage)
+    private static void BuildCsvHeader(StringBuilder sb, int blockSize, bool includeCalendar, bool includeMessage)
     {
         var columns = new List<string>();
         for (int i = 1; i <= blockSize; i++)
@@ -173,19 +171,19 @@ public class PlannerFileGeneratorService : IPlannerFileGeneratorService
         sb.AppendLine(string.Join(";", columns));
     }
 
-    private void AddEmptyBlock(List<string> rowData, bool includeCalendar, bool includeMessage)
+    private static void AddEmptyBlock(List<string> rowData, bool includeCalendar, bool includeMessage)
     {
         rowData.AddRange(new[] { "", "", "" }); // DIA, SEMANA, MÊS
         if (includeCalendar) rowData.Add("");
         if (includeMessage) rowData.Add("");
     }
     
-    private int GetFieldsPerBlock(bool includeCalendar, bool includeMessage)
+    private static int GetFieldsPerBlock(bool includeCalendar, bool includeMessage)
     {
         return 3 + (includeCalendar ? 1 : 0) + (includeMessage ? 1 : 0);
     }
 
-    private void FinishAndAppendLine(StringBuilder sb, List<string> rowData, int blockSize, bool includeCalendar, bool includeMessage)
+    private static void FinishAndAppendLine(StringBuilder sb, List<string> rowData, int blockSize, bool includeCalendar, bool includeMessage)
     {
         int fieldsPerBlock = GetFieldsPerBlock(includeCalendar, includeMessage);
         while (rowData.Count < blockSize * fieldsPerBlock)
@@ -196,7 +194,7 @@ public class PlannerFileGeneratorService : IPlannerFileGeneratorService
         rowData.Clear();
     }
 
-    private void AddPadding(List<string> rowData, PlannerFile currentData, Dictionary<DayOfWeek, int> dayToColumnIndexMap, bool includeCalendar, bool includeMessage)
+    private static void AddPadding(List<string> rowData, PlannerFile currentData, Dictionary<DayOfWeek, int> dayToColumnIndexMap, bool includeCalendar, bool includeMessage)
     {
         if (!dayToColumnIndexMap.TryGetValue(currentData.Date.DayOfWeek, out int targetColumnIndex))
         {
