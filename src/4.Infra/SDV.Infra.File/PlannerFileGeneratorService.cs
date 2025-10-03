@@ -122,7 +122,7 @@ public class PlannerFileGeneratorService : IPlannerFileGeneratorService
                 // Verifica se o mês mudou
                 bool isNewMonth = currentData.Date.Month != previousData.Date.Month;
 
-                // Se for uma nova semana OU um novo mês, finalizamos a linha atual.
+                // Se for uma nova semana ou um novo mês, finalizamos a linha atual.
                 if (isNewWeek || isNewMonth)
                 {
                     FinishAndAppendLine(sb, rowData, blockSize, includeCalendar, includeMessage);
@@ -173,7 +173,7 @@ public class PlannerFileGeneratorService : IPlannerFileGeneratorService
 
     private static void AddEmptyBlock(List<string> rowData, bool includeCalendar, bool includeMessage)
     {
-        rowData.AddRange(new[] { "", "", "" }); // DIA, SEMANA, MÊS
+        rowData.AddRange(new[] { "", "", "" });
         if (includeCalendar) rowData.Add("");
         if (includeMessage) rowData.Add("");
     }

@@ -1,102 +1,89 @@
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Caching.Memory;
-using SDV.Infra.Consul;
-using SDV.Infra.Vault;
-using SDV.Infra.Data.Resolver;
-using SDV.Infra.Data.MongoDB;
 using Infra.Cache;
 using Infra.RateLimit;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using SDV.Application.Resolver;
+using SDV.Infra.Consul;
+using SDV.Infra.Data.MongoDB;
+using SDV.Infra.Data.Resolver;
+using SDV.Infra.Vault;
+using System;
 
-namespace SDV.Infra.IoC;
-
-public static class Bootstrap
+namespace SDV.Infra.IoC
 {
-    public static async Task StartIoCAsync(IServiceCollection services, IConfiguration configuration)
-    {        
-        var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
-            ?? throw new ArgumentNullException("ASPNETCORE_ENVIRONMENT");
-
-        // ------------------------
-        // Vault
-        // ------------------------
-        services.AddSingleton<IVaultService>(sp =>
+    public static class Bootstrap
+    {
+        // O método agora é síncrono (void), o que reflete seu comportamento real e remove o aviso.
+        public static void StartIoC(IServiceCollection services, IConfiguration configuration)
         {
-            var vaultAddress = Environment.GetEnvironmentVariable("CONN_STRING_VAULT")
-                ?? throw new ArgumentNullException("CONN_STRING_VAULT");
-            var vaultUser = Environment.GetEnvironmentVariable("USER_VAULT")
-                ?? throw new ArgumentNullException("USER_VAULT");
-            var vaultPass = Environment.GetEnvironmentVariable("PASS_VAULT")
-                ?? throw new ArgumentNullException("PASS_VAULT");
+            var environment = configuration["ASPNETCORE_ENVIRONMENT"] ?? "Development";
 
-            return new VaultService(vaultAddress, vaultUser, vaultPass);
-        });
+            // ------------------------
+            // Vault
+            // Registra a "receita" de como criar o VaultService.
+            // Ele só será criado quando alguém realmente precisar dele.
+            // ------------------------
+            services.AddSingleton<IVaultService>(sp =>
+            {
+                // Agora lê da configuração injetada, que funciona tanto em prod quanto em teste.
+                var vaultAddress = configuration["CONN_STRING_VAULT"] ?? throw new ArgumentNullException("CONN_STRING_VAULT", "Variável de ambiente não encontrada.");
+                var vaultUser = configuration["USER_VAULT"] ?? throw new ArgumentNullException("USER_VAULT", "Variável de ambiente não encontrada.");
+                var vaultPass = configuration["PASS_VAULT"] ?? throw new ArgumentNullException("PASS_VAULT", "Variável de ambiente não encontrada.");
 
-        // Build temporário apenas para pegar VaultService
-        var spTemp = services.BuildServiceProvider();
-        var vault = spTemp.GetRequiredService<IVaultService>();
+                return new VaultService(vaultAddress, vaultUser, vaultPass);
+            });
 
-        var mountPoint = $"sdv/{environment}";
+            // ------------------------
+            // Consul
+            // ------------------------
+            services.AddSingleton<IConsulService>(sp =>
+            {
+                // Quando o Consul for necessário, ele primeiro resolverá o Vault.
+                var vault = sp.GetRequiredService<IVaultService>();
+                var mountPoint = $"sdv/{environment}";
+                
+                // .GetAwaiter().GetResult() é usado aqui porque a injeção de dependência síncrona não pode aguardar métodos assíncronos.
+                var consulUrl = vault.GetKeyAsync("keys", "Consul.Url", mountPoint).GetAwaiter().GetResult();
+                if (string.IsNullOrEmpty(consulUrl))
+                    throw new InvalidOperationException("Consul URL not found in Vault.");
 
-        // ------------------------
-        // Consul (busca URL do Vault)
-        // ------------------------
-        var consulUrl = await vault.GetKeyAsync("keys", "Consul.Url", mountPoint);
-        if (string.IsNullOrEmpty(consulUrl))
-            throw new InvalidOperationException("Consul URL not found in Vault.");
+                return new ConsulService(consulUrl);
+            });
+            
+            // ------------------------
+            // MongoDB
+            // ------------------------
+            services.AddSingleton<IMongoDBRepository>(sp =>
+            {
+                var vault = sp.GetRequiredService<IVaultService>();
+                var mountPoint = $"sdv/{environment}";
 
-        // Registra o ConsulService de verdade
-        services.AddSingleton<IConsulService>(new ConsulService(consulUrl));
+                var mongoHost = vault.GetKeyAsync("keys", "MongoDb.host", mountPoint).GetAwaiter().GetResult();
+                var mongoUser = vault.GetKeyAsync("keys", "MongoDb.user", mountPoint).GetAwaiter().GetResult();
+                var mongoPass = vault.GetKeyAsync("keys", "MongoDb.pass", mountPoint).GetAwaiter().GetResult();
+                var mongoDatabase = vault.GetKeyAsync("keys", "MongoDb.database", mountPoint).GetAwaiter().GetResult();
+                
+                if (string.IsNullOrEmpty(mongoDatabase))
+                    throw new InvalidOperationException("Mongo database name not found in Vault.");
 
-        // Build temporário para pegar ConsulService agora que ele foi registrado
-        spTemp = services.BuildServiceProvider();
-        var consul = spTemp.GetRequiredService<IConsulService>();
+                var mongoConn = $"mongodb://{mongoUser}:{mongoPass}@{mongoHost}/{mongoDatabase}?authSource=admin";
+                
+                return new MongoDBRepository(mongoConn).SetDatabase(mongoDatabase);
+            });
 
-        // ------------------------
-        // Resolução de valores do Consul
-        // ------------------------
-        var cacheExpirationStr = await consul.GetValueAsync("sdv/config/cache", "CacheExpirationMinutes");
-        var cacheExpiration = int.TryParse(cacheExpirationStr, out var ce) ? ce : 5;
+            // ------------------------
+            // Outros Serviços (Cache, RateLimit, etc.)
+            // ------------------------
+            services.AddMemoryCache();
+            services.AddSingleton<ICacheService, MemoryCacheService>();
+            services.AddSingleton<IRateLimiterService>(sp => new MemoryRateLimiterService(100)); // Valor padrão, pode ser lido do Consul se necessário.
 
-        var rateLimitStr = await consul.GetValueAsync("sdv/config/rate", "MaxRequestsPerMinute");
-        var rateLimit = int.TryParse(rateLimitStr, out var rl) ? rl : 10;
-
-        // ------------------------
-        // Repositórios genéricos
-        // ------------------------
-        services.AddDataRepository();
-        services.AddApplications();
-
-        // ------------------------
-        // MemoryCache
-        // ------------------------
-        services.AddMemoryCache();
-        services.AddMemoryCache();
-
-        services.AddSingleton<ICacheService>(sp =>
-        {
-            var memoryCache = sp.GetRequiredService<IMemoryCache>();
-            return new MemoryCacheService(memoryCache, TimeSpan.FromMinutes(cacheExpiration));
-        });
-
-
-        // ------------------------
-        // MongoDB
-        // ------------------------
-        var mongoHost = await vault.GetKeyAsync("keys", "MongoDb.host", mountPoint);
-        var mongoUser = await vault.GetKeyAsync("keys", "MongoDb.user", mountPoint);
-        var mongoPass = await vault.GetKeyAsync("keys", "MongoDb.pass", mountPoint);
-        var mongoDatabase = await vault.GetKeyAsync("keys", "MongoDb.database", mountPoint);
-        if (string.IsNullOrEmpty(mongoDatabase))
-            throw new InvalidOperationException("Mongo database name not found in Vault.");
-
-        var mongoConn = $"mongodb://{mongoUser}:{mongoPass}@{mongoHost}/{mongoDatabase}?authSource=admin";
-
-        // ------------------------
-        // Registro final dos singletons
-        // ------------------------
-        services.AddSingleton<IRateLimiterService>(new MemoryRateLimiterService(rateLimit));
-        services.AddSingleton<IMongoDBRepository>(new MongoDBRepository(mongoConn).SetDatabase(mongoDatabase));
+            // ------------------------
+            // Repositórios e Serviços de Aplicação
+            // ------------------------
+            services.AddDataRepository();
+            services.AddApplications();
+        }
     }
 }
+

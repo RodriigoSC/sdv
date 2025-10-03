@@ -22,4 +22,8 @@
     <ProjectReference Include="../../4.Infra/SDV.Infra.IoC/SDV.Infra.IoC.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="SDV.Tests" />
+  </ItemGroup>
+
 </Project>

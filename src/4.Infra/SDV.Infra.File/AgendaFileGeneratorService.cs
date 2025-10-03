@@ -168,9 +168,9 @@ public class AgendaFileGeneratorService : IAgendaFileGeneratorService
     
     private static void AddPaddingBlock(List<string> rowData, bool includeCalendar, bool includeMessage, string monthValue = "Notas")
     {
-        rowData.Add(""); // DIA
-        rowData.Add(""); // SEMANA
-        rowData.Add(monthValue); // MÊS
+        rowData.Add("");
+        rowData.Add("");
+        rowData.Add(monthValue);
         if (includeCalendar) rowData.Add("");
         if (includeMessage) rowData.Add("");
     }
