@@ -31,7 +31,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SDV.Application", "src\2.Ap
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SDV.Api", "src\1.Presentation\SDV.Api\SDV.Api.csproj", "{FDF74064-62B6-4E23-BCB3-71380E3067AC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SDV.Tests", "src\5.Tests\SDV.Tests\SDV.Tests.csproj", "{C0EB9A01-5A1D-4762-AE58-914E526773A6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SDV.Tests", "tests\SDV.Tests\SDV.Tests.csproj", "{C0EB9A01-5A1D-4762-AE58-914E526773A6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SDV.Infra.File", "src\4.Infra\SDV.Infra.File\SDV.Infra.File.csproj", "{324A217B-C75F-4059-8BA5-BA747B891A94}"
 EndProject

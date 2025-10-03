@@ -15,17 +15,24 @@
     <PackageReference Include="Moq" Version="4.20.70" />
     <PackageReference Include="xunit" Version="2.5.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
+    <PackageReference Include="coverlet.msbuild" Version="6.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../1.Presentation/SDV.Api/SDV.Api.csproj" />
-    <ProjectReference Include="../../2.Application/SDV.Application/SDV.Application.csproj" />
-    <ProjectReference Include="../../3.Domain/SDV.Domain/SDV.Domain.csproj" />
-    <ProjectReference Include="../../4.Infra/SDV.Infra.Data/SDV.Infra.Data.csproj" />
+    <ProjectReference Include="../../src/1.Presentation/SDV.Api/SDV.Api.csproj" />
+    <ProjectReference Include="../../src/2.Application/SDV.Application/SDV.Application.csproj" />
+    <ProjectReference Include="../../src/3.Domain/SDV.Domain/SDV.Domain.csproj" />
+    <ProjectReference Include="../../src/4.Infra/SDV.Infra.Data/SDV.Infra.Data.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="TestResults/" />
+  </ItemGroup>
 </Project>
