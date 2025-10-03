@@ -3,7 +3,7 @@ using SDV.Infra.IoC;
 
 var builder = WebApplication.CreateBuilder(args);
 
-await Bootstrap.StartIoCAsync(builder.Services, builder.Configuration);
+Bootstrap.StartIoC(builder.Services, builder.Configuration);
 
 builder.Services.AddControllers();
 
@@ -38,6 +38,9 @@ app.UseHttpsRedirection();
 
 app.MapControllers();
 
-app.Run();
+await app.RunAsync();
 
-public partial class Program { }
+public partial class Program
+{
+    protected Program() { }
+}

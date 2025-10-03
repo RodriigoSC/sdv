@@ -3,7 +3,7 @@ using SDV.Domain.Enums.Commons;
 
 namespace SDV.Domain.Entities.Agendas.ValueObjects;
 
-public class AgendaConfiguration : IEquatable<AgendaConfiguration>
+public sealed class AgendaConfiguration : IEquatable<AgendaConfiguration>
 {
     [BsonElement("DayNumberFormat")]
     public DayNumberFormat DayNumberFormat { get; }

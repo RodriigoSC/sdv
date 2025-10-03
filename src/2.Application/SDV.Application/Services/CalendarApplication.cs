@@ -4,6 +4,8 @@ using SDV.Application.Mappers;
 using SDV.Application.Results;
 using SDV.Domain.Interfaces.Calendars;
 
+namespace SDV.Application.Services;
+
 public class CalendarApplication : ICalendarApplication
 {
     private readonly ICalendarService _calendarService;

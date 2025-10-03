@@ -12,11 +12,11 @@ public interface IPlannerService
     #endregion
 
     #region Criação
-    Task<Result<Planner>> CreatePlannerAsync(Planner Planner);
+    Task<Result<Planner>> CreatePlannerAsync(Planner planner);
     #endregion
 
     #region Atualizações
-    Task<Result<Planner>> UpdatePlannerAsync(Planner Planner);
+    Task<Result<Planner>> UpdatePlannerAsync(Planner planner);
     Task<Result<Planner>> UpdatePlannerTitleAsync(Guid id, string newTitle);
     Task<Result<Planner>> UpdatePlannerConfigurationAsync(Guid id, PlannerConfiguration newConfiguration);
     Task<Result<Planner>> UpdatePlannerSeasonAsync(Guid id, PlannerSeason newSeason);

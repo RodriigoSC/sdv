@@ -2,7 +2,6 @@ using SDV.Application.Dtos.Clients;
 using SDV.Domain.Entities.Clients;
 using SDV.Domain.Entities.Clients.ValueObjects;
 
-
 namespace SDV.Application.Mappers;
 
 public static class ClientMapper
@@ -38,16 +37,24 @@ public static class ClientMapper
             yield return client.ToClientDto();
     }
 
-    // DTO -> Entidade (para criação)
+    // DTO -> Entidade (criação)
     public static Client ToClient(this ClientDto dto)
     {
-        if (dto == null) return null!;
+        if (dto == null) throw new ArgumentNullException(nameof(dto));
 
-        var email = new Email(dto.Email ?? throw new ArgumentNullException(nameof(dto.Email)));
-        var passwordHash = dto.PasswordHash ?? throw new ArgumentNullException(nameof(dto.PasswordHash));
+        // Garantindo que o Email não é nulo e delegando validação ao VO
+        if (string.IsNullOrWhiteSpace(dto.Email))
+            throw new InvalidOperationException("O campo 'Email' não pode ser nulo ou vazio.");
+        var email = new Email(dto.Email);
+
+        // Garantindo que PasswordHash não é nulo
+        var passwordHash = dto.PasswordHash ?? throw new InvalidOperationException("O campo 'PasswordHash' não pode ser nulo.");
+
+        // Garantindo que Name não é nulo
+        var name = dto.Name ?? throw new InvalidOperationException("O campo 'Name' não pode ser nulo.");
 
         return new Client(
-            name: dto.Name ?? throw new ArgumentNullException(nameof(dto.Name)),
+            name: name,
             email: email,
             passwordHash: passwordHash
         );

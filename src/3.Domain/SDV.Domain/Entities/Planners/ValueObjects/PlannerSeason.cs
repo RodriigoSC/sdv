@@ -1,6 +1,5 @@
 using MongoDB.Bson.Serialization.Attributes;
 using SDV.Domain.Enums.Commons;
-using System.Linq; // Certifique-se de ter este using
 
 namespace SDV.Domain.Entities.Planners.ValueObjects;
 
@@ -13,7 +12,7 @@ public sealed class PlannerSeason : IEquatable<PlannerSeason>
     [BsonElement("YearsMonths")]
     public Dictionary<string, List<Month>> _yearsMonths;
     public IReadOnlyDictionary<string, List<Month>> YearsMonths => _yearsMonths;
-
+    private readonly int _hashCode;
 
     public PlannerSeason()
     {
@@ -25,6 +24,17 @@ public sealed class PlannerSeason : IEquatable<PlannerSeason>
     {
         _daysOfWeek = daysOfWeek?.Distinct().ToList() ?? new List<Weekday>();
         _yearsMonths = yearsMonths ?? new Dictionary<string, List<Month>>();
+
+        var hash = new HashCode();
+        foreach (var day in _daysOfWeek.OrderBy(d => d))
+            hash.Add(day);
+        foreach (var pair in _yearsMonths.OrderBy(k => k.Key))
+        {
+            hash.Add(pair.Key);
+            foreach (var month in pair.Value.OrderBy(m => m))
+                hash.Add(month);
+        }
+        _hashCode = hash.ToHashCode();
     }
 
     public PlannerSeason SetDaysOfWeek(IEnumerable<Weekday> days)
@@ -49,24 +59,7 @@ public sealed class PlannerSeason : IEquatable<PlannerSeason>
 
     public override bool Equals(object? obj) => Equals(obj as PlannerSeason);
 
-    public override int GetHashCode()
-    {
-        var hash = new HashCode();
-        foreach (var day in _daysOfWeek.OrderBy(d => d))
-        {
-            hash.Add(day);
-        }
-        
-        foreach (var pair in _yearsMonths.OrderBy(k => k.Key))
-        {
-            hash.Add(pair.Key);
-            foreach (var month in pair.Value.OrderBy(m => m))
-            {
-                hash.Add(month);
-            }
-        }
-        return hash.ToHashCode();
-    }
+    public override int GetHashCode() => _hashCode;
 
     public List<DateTime> GetDates()
     {

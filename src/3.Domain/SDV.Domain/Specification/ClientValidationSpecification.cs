@@ -1,4 +1,5 @@
 using System;
+using System.Net.Mail;
 using System.Text.RegularExpressions;
 using FluentValidation;
 using SDV.Domain.Entities.Clients;
@@ -31,10 +32,10 @@ namespace SDV.Domain.Specification
                     .MinimumLength(4).WithMessage("O campo 'Name' deve ter no mínimo 4 caracteres.")
                     .MaximumLength(100).WithMessage("O campo 'Name' deve ter no máximo 100 caracteres.");
 
-                // Email
+                // Email (validação usando MailAddress)
                 RuleFor(x => x.Email)
                     .NotNull().WithMessage("O campo 'Email' é obrigatório.")
-                    .Must(e => Regex.IsMatch(e.ToString(), @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                    .Must(e => MailAddress.TryCreate(e.ToString(), out _))
                     .WithMessage("O campo 'Email' está em formato inválido.");
 
                 // Senha
@@ -43,9 +44,9 @@ namespace SDV.Domain.Specification
                     .MinimumLength(6).WithMessage("A senha deve ter no mínimo 6 caracteres.")
                     .MaximumLength(128).WithMessage("A senha deve ter no máximo 128 caracteres.");
 
-                // Telefone (opcional)
+                // Telefone (opcional, regex com timeout)
                 RuleFor(x => x.PhoneNumber)
-                    .Matches(@"^\+?[1-9]\d{1,14}$")
+                    .Matches(new Regex(@"^\+?[1-9]\d{1,14}$", RegexOptions.None, TimeSpan.FromMilliseconds(200)))
                     .When(x => !string.IsNullOrWhiteSpace(x.PhoneNumber))
                     .WithMessage("O campo 'PhoneNumber' está em formato inválido.");
 

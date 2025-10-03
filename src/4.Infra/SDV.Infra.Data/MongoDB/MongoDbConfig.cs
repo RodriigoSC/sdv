@@ -12,8 +12,16 @@ public static class MongoDbConfig
         {
             if (_configured) return;
 
-            // Configura GUIDs para representação padrão (string segura)
-            BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
+            try
+            {
+                // Configura GUIDs para representação padrão (string segura)
+                BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
+            }
+            catch (BsonSerializationException)
+            {
+                // Ignora o erro se o serializador já estiver registrado.
+                // Isso é comum em ambientes de teste onde a configuração pode ser executada várias vezes.
+            }
 
             _configured = true;
         }

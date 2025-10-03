@@ -1,5 +1,4 @@
-using System;
-using System.Text.RegularExpressions;
+using System.Net.Mail;
 
 namespace SDV.Domain.Entities.Clients.ValueObjects;
 
@@ -8,13 +7,13 @@ public readonly record struct Email(string Address)
     public override string ToString() => Address;
 
     public static Email Create(string address)
-    {
-        if (string.IsNullOrWhiteSpace(address))
-            throw new ArgumentException("Email cannot be empty", nameof(address));
+{
+    if (string.IsNullOrWhiteSpace(address))
+        throw new ArgumentException("Email cannot be empty", nameof(address));
 
-        if (!Regex.IsMatch(address, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
-            throw new ArgumentException("Invalid email format", nameof(address));
+    if (!MailAddress.TryCreate(address, out _))
+        throw new ArgumentException("Invalid email format", nameof(address));
 
-        return new Email(address.ToLowerInvariant());
-    }
+    return new Email(address.ToLowerInvariant());
+}
 }

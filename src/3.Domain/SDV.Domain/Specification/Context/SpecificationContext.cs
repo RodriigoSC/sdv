@@ -22,9 +22,11 @@ public class SpecificationContext<T>
     public void Validate(T entity)
     {
         if (!_validationSpecifications.Any())
-        throw new EntityValidationException(
-            typeof(T).Name, "You must add at least one specification before calling Validate."
-        );
+        {
+            throw new EntityValidationException(
+                typeof(T).Name, "You must add at least one specification before calling Validate."
+            );
+        }
         
         foreach (var specType in _validationSpecifications)
         {

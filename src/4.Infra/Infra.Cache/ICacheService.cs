@@ -1,4 +1,4 @@
-namespace Infra.Cache;
+namespace SDV.Infra.Cache;
 
 public interface ICacheService
 {

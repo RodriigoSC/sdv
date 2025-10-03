@@ -1,4 +1,3 @@
-using System;
 using MongoDB.Driver;
 
 namespace SDV.Infra.Data.MongoDB;

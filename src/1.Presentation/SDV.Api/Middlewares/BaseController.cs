@@ -7,7 +7,7 @@ namespace SDV.Api.Middlewares;
 public class BaseController : ControllerBase
 {
     // Cria ApiResponse genérico a partir de OperationResult
-    protected ApiResponse<TReturn> CreateResponseObjectFromOperationResult<TReturn>(
+    protected static ApiResponse<TReturn> CreateResponseObjectFromOperationResult<TReturn>(
         int statusCode,
         OperationResult<TReturn> operationResult)
     {

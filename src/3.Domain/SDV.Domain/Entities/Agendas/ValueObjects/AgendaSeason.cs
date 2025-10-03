@@ -1,7 +1,6 @@
 using MongoDB.Bson.Serialization.Attributes;
 using SDV.Domain.Enums.Commons;
 
-
 namespace SDV.Domain.Entities.Agendas.ValueObjects;
 
 public sealed class AgendaSeason : IEquatable<AgendaSeason>
@@ -13,6 +12,8 @@ public sealed class AgendaSeason : IEquatable<AgendaSeason>
     [BsonElement("YearsMonths")]
     public Dictionary<string, List<Month>> _yearsMonths;
     public IReadOnlyDictionary<string, List<Month>> YearsMonths => _yearsMonths;
+    private readonly int _hashCode;
+
 
     public AgendaSeason()
     {
@@ -24,6 +25,17 @@ public sealed class AgendaSeason : IEquatable<AgendaSeason>
     {
         _daysOfWeek = daysOfWeek?.Distinct().ToList() ?? new List<Weekday>();
         _yearsMonths = yearsMonths ?? new Dictionary<string, List<Month>>();
+
+        var hash = new HashCode();
+        foreach (var day in _daysOfWeek.OrderBy(d => d))
+            hash.Add(day);
+        foreach (var pair in _yearsMonths.OrderBy(k => k.Key))
+        {
+            hash.Add(pair.Key);
+            foreach (var month in pair.Value.OrderBy(m => m))
+                hash.Add(month);
+        }
+        _hashCode = hash.ToHashCode();
     }
 
     public AgendaSeason SetDaysOfWeek(IEnumerable<Weekday> days)
@@ -48,19 +60,7 @@ public sealed class AgendaSeason : IEquatable<AgendaSeason>
 
     public override bool Equals(object? obj) => Equals(obj as AgendaSeason);
 
-    public override int GetHashCode()
-    {
-        var hash = new HashCode();
-        foreach (var day in DaysOfWeek.OrderBy(d => d))
-            hash.Add(day);
-        foreach (var pair in _yearsMonths.OrderBy(k => k.Key))
-        {
-            hash.Add(pair.Key);
-            foreach (var month in pair.Value.OrderBy(m => m))
-                hash.Add(month);
-        }
-        return hash.ToHashCode();
-    }
+    public override int GetHashCode() => _hashCode;
 
     public List<DateTime> GetDates()
     {
@@ -77,7 +77,7 @@ public sealed class AgendaSeason : IEquatable<AgendaSeason>
             var months = pair.Value;
             foreach (var monthEnum in months)
             {
-                int month = (int)monthEnum + 1; // Assuming Month enum starts at 0 = January
+                int month = (int)monthEnum + 1;
                 int daysInMonth = DateTime.DaysInMonth(year, month);
 
                 for (int day = 1; day <= daysInMonth; day++)

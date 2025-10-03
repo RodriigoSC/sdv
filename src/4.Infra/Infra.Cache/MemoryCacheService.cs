@@ -1,6 +1,6 @@
-using Infra.Cache;
 using Microsoft.Extensions.Caching.Memory;
 
+namespace SDV.Infra.Cache;
 
 public class MemoryCacheService : ICacheService
 {
