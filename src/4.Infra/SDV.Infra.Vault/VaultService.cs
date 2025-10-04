@@ -18,7 +18,6 @@ public class VaultService : IVaultService
 
     public async Task<string?> GetKeyAsync(string path, string key, string mountPoint)
     {
-        // O mountPoint agora vem do Bootstrap
         Secret<SecretData> secret = await _client.V1.Secrets.KeyValue.V2.ReadSecretAsync(
             path,
             mountPoint: mountPoint

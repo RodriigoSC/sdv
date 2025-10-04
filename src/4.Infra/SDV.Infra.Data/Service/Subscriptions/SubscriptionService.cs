@@ -2,7 +2,6 @@ using SDV.Domain.Entities.Clients;
 using SDV.Domain.Entities.Commons;
 using SDV.Domain.Entities.Plans;
 using SDV.Domain.Entities.Subscriptions;
-using SDV.Domain.Enums.Plans;
 using SDV.Domain.Enums.Subscriptions;
 using SDV.Domain.Interfaces.Payments;
 using SDV.Domain.Interfaces.Plans;
@@ -68,16 +67,22 @@ public class SubscriptionService : ISubscriptionService
             : Result<Subscription>.Failure("Assinatura não encontrada.");
     }
 
-    public async Task<Result<bool>> ProcessPaymentCallbackAsync(string paymentId)
+    public async Task<Result<bool>> ProcessPaymentCallbackAsync(string paymentId, string secret)
     {
-        // 1. Obter o status do pagamento
+        var validationResult = _paymentGateway.ValidateWebhookSecret(secret);
+        if (!validationResult.IsSuccess)
+        {
+            return Result<bool>.Failure(validationResult.Error ?? "Secret inválido.");
+        }
+
+        // Obter o status do pagamento
         var paymentStatusResult = await _paymentGateway.GetPaymentStatusAsync(paymentId);
         if (!paymentStatusResult.IsSuccess)
         {
             return Result<bool>.Failure(paymentStatusResult.Error ?? "Não foi possível obter o status do pagamento.");
         }        
 
-        // 2. Obter a referência externa (ID da assinatura)
+        // Obter a referência externa (ID da assinatura)
         var externalRefResult = await _paymentGateway.GetPaymentExternalReferenceAsync(paymentId);
         if (!externalRefResult.IsSuccess)
         {
@@ -100,10 +105,10 @@ public class SubscriptionService : ISubscriptionService
             return Result<bool>.Success(true);
         }
 
-        // 3. Buscar o plano para calcular a duração corretamente
+        // Buscar o plano para calcular a duração corretamente
         var plan = await _planRepository.GetByIdAsync(subscription.PlanId);
 
-        // 4. Atualizar o status da assinatura baseado no status do pagamento
+        // Atualizar o status da assinatura baseado no status do pagamento
         switch (paymentStatusResult.Value)
         {
             case Domain.Enums.Payments.PaymentStatus.Approved:

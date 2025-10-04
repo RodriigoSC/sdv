@@ -39,7 +39,7 @@ public class SubscriptionController : BaseController
     }
 
     [HttpPost("payment/callback")]
-    public async Task<IActionResult> PaymentCallback([FromBody] JObject payload)
+    public async Task<IActionResult> PaymentCallback([FromBody] JObject payload, [FromQuery] string secret)
     {
        try
         {            
@@ -69,12 +69,11 @@ public class SubscriptionController : BaseController
 
                 _logger.LogInformation("Processando pagamento ID: {PaymentId}", paymentId);
                 
-                var result = await _subscriptionApplication.ProcessPaymentCallback(paymentId);
+                var result = await _subscriptionApplication.ProcessPaymentCallback(paymentId, secret);
                 
                 if (!result.IsSuccess)
                 {
                     _logger.LogError("Erro ao processar callback: {Error}", result.Message);
-                    // Ainda retorna 200 para o MP não reenviar
                     return Ok(new { processed = false, error = result.Message });
                 }
 

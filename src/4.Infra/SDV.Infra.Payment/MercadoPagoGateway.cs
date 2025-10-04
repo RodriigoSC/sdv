@@ -51,7 +51,7 @@ public class MercadoPagoGateway : IPaymentGateway
             {
                 return Result<string>.Failure("Valor excede o limite permitido");
             }
-            
+
             var request = new PreferenceRequest
             {
                 ExternalReference = subscription.Id.ToString(),
@@ -75,12 +75,12 @@ public class MercadoPagoGateway : IPaymentGateway
                 AutoReturn = "approved",
                 NotificationUrl = $"{_settings.NotificationUrl}?secret={_settings.WebhookSecret}"
 
-            };            
+            };
 
             var client = new PreferenceClient();
             //Preference preference = await client.CreateAsync(request);
-            Preference preference = await _retryPolicy.ExecuteAsync(() =>  client.CreateAsync(request));
-           
+            Preference preference = await _retryPolicy.ExecuteAsync(() => client.CreateAsync(request));
+
             return Result<string>.Success(preference.InitPoint); // Retorna a URL de checkout (init_point)
         }
         catch (Exception ex)
@@ -95,7 +95,7 @@ public class MercadoPagoGateway : IPaymentGateway
         try
         {
             var client = new PaymentClient();
-            var payment = await _retryPolicy.ExecuteAsync(() =>  client.GetAsync(long.Parse(paymentId)));
+            var payment = await _retryPolicy.ExecuteAsync(() => client.GetAsync(long.Parse(paymentId)));
 
             return payment.Status switch
             {
@@ -131,5 +131,15 @@ public class MercadoPagoGateway : IPaymentGateway
             return Result<string>.Failure($"Erro ao obter referência do pagamento: {ex.Message}");
         }
     }
+    
+     public Result<bool> ValidateWebhookSecret(string secret)
+    {
+        if (string.IsNullOrEmpty(secret) || secret != _settings.WebhookSecret)
+        {
+            _logger.LogWarning("Falha na validação do Webhook Secret.");
+            return Result<bool>.Failure("Secret inválido.");
+        }
         
+        return Result<bool>.Success(true);
+    } 
 }

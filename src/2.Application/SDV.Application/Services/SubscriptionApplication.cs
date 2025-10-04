@@ -54,16 +54,21 @@ public class SubscriptionApplication : ISubscriptionApplication
         return OperationResult<CreatePaymentDto>.Succeeded(responseDto, "Assinatura criada com sucesso", 201);
     }
 
-    public async Task<OperationResult<bool>> ProcessPaymentCallback(string paymentId)
+    public async Task<OperationResult<bool>> ProcessPaymentCallback(string paymentId, string secret)
     {
         if (string.IsNullOrEmpty(paymentId))
         {
             return OperationResult<bool>.Failed(false, "ID do pagamento inválido.", 400);
         }
-        var result = await _subscriptionService.ProcessPaymentCallbackAsync(paymentId);
+        var result = await _subscriptionService.ProcessPaymentCallbackAsync(paymentId, secret);
 
         if (!result.IsSuccess)
         {
+            if (result.Error == "Secret inválido.")
+            {
+                return OperationResult<bool>.Failed(false, result.Error, 401);
+            }
+            
             return OperationResult<bool>.Failed(false, result.Error ?? "", 400);
         }
         return OperationResult<bool>.Succeeded(true, "Callback processado com sucesso.", 200);

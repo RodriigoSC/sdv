@@ -11,4 +11,5 @@ public interface IPaymentGateway
     Task<Result<string>> CreatePaymentAsync(Subscription subscription, Plan plan);
     Task<Result<PaymentStatus>> GetPaymentStatusAsync(string transactionId);
     Task<Result<string>> GetPaymentExternalReferenceAsync(string paymentId);
+    Result<bool> ValidateWebhookSecret(string secret);
 }
