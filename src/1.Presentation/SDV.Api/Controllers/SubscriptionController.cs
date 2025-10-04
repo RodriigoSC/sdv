@@ -1,5 +1,6 @@
 using System;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 using SDV.Api.Middlewares;
 using SDV.Application.Interfaces;
 
@@ -28,14 +29,27 @@ public class SubscriptionController : BaseController
     [HttpGet("client/{clientId}")]
     public async Task<IActionResult> GetSubscription(string clientId)
     {
-        // Lógica para obter a assinatura do cliente
-        return Ok();
+        var response = await _subscriptionApplication.GetSubscriptionByClientId(clientId);
+        int statusCode = response.OperationCode;
+
+        return StatusCode(statusCode, CreateResponseObjectFromOperationResult(statusCode, response));
     }
 
     [HttpPost("payment/callback")]
-    public async Task<IActionResult> PaymentCallback([FromBody] object payload)
+    public async Task<IActionResult> PaymentCallback([FromBody] JObject payload)
     {
-        // Endpoint para o Mercado Pago notificar o status do pagamento
+        // O Mercado Pago envia um payload com o ID do pagamento dentro de "data.id" quando o tipo é "payment"
+        string? type = payload["type"]?.ToString();
+        if (type == "payment")
+        {
+            string? paymentId = payload["data"]?["id"]?.ToString();
+            if (!string.IsNullOrEmpty(paymentId))
+            {
+                await _subscriptionApplication.ProcessPaymentCallback(paymentId);
+            }
+        }
+        
+        // Retorna 200 OK para o Mercado Pago para confirmar o recebimento.
         return Ok();
     }
 }

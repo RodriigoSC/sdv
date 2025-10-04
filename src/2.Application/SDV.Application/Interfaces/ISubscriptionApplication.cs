@@ -1,9 +1,12 @@
-using System;
+using SDV.Application.Dtos.Payments;
+using SDV.Application.Dtos.Subscriptions;
 using SDV.Application.Results;
 
 namespace SDV.Application.Interfaces;
 
 public interface ISubscriptionApplication
 {
-    Task<OperationResult<string>> Subscribe(string planId, string clientId);
+    Task<OperationResult<CreatePaymentDto>> Subscribe(string planId, string clientId);
+    Task<OperationResult<bool>> ProcessPaymentCallback(string paymentId);
+    Task<OperationResult<SubscriptionDto>> GetSubscriptionByClientId(string clientId);
 }

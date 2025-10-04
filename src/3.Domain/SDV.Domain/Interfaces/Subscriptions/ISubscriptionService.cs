@@ -9,5 +9,5 @@ public interface ISubscriptionService
 {
     Task<Result<Subscription>> CreateSubscriptionAsync(Client client, Plan plan);
     Task<Result<Subscription>> GetSubscriptionByClientAsync(Guid clientId);
-    Task<Result<bool>> ProcessPaymentCallbackAsync(string transactionId, string status);
+    Task<Result<bool>> ProcessPaymentCallbackAsync(string paymentId);
 }

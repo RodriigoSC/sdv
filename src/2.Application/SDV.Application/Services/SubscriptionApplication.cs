@@ -1,4 +1,7 @@
+using SDV.Application.Dtos.Payments;
+using SDV.Application.Dtos.Subscriptions;
 using SDV.Application.Interfaces;
+using SDV.Application.Mappers;
 using SDV.Application.Results;
 using SDV.Domain.Interfaces.Clients;
 using SDV.Domain.Interfaces.Plans;
@@ -20,11 +23,11 @@ public class SubscriptionApplication : ISubscriptionApplication
         _planRepository = planRepository;
     }
 
-    public async Task<OperationResult<string>> Subscribe(string planId, string clientId)
+    public async Task<OperationResult<CreatePaymentDto>> Subscribe(string planId, string clientId)
     {
         if (!Guid.TryParse(clientId, out var clientGuid) || !Guid.TryParse(planId, out var planGuid))
         {
-            return OperationResult<string>.Failed(null, "IDs inválidos", 400);
+            return OperationResult<CreatePaymentDto>.Failed(null, "IDs inválidos", 400);
         }
 
         var client = await _clientRepository.GetByIdAsync(clientGuid);
@@ -32,16 +35,54 @@ public class SubscriptionApplication : ISubscriptionApplication
 
         if (client == null || plan == null)
         {
-            return OperationResult<string>.Failed(null, "Cliente ou Plano não encontrado", 404);
+            return OperationResult<CreatePaymentDto>.Failed(null, "Cliente ou Plano não encontrado", 404);
         }
 
         var subscriptionResult = await _subscriptionService.CreateSubscriptionAsync(client, plan);
 
-        if (!subscriptionResult.IsSuccess)
+        if (!subscriptionResult.IsSuccess || subscriptionResult.Value == null) // Verificação de nulidade
         {
-            return OperationResult<string>.Failed(null, subscriptionResult.Error, 400);
+            return OperationResult<CreatePaymentDto>.Failed(null, subscriptionResult.Error ?? "Falha ao criar a assinatura.", 400);
         }
 
-        return OperationResult<string>.Succeeded(subscriptionResult.Value.Id.ToString(), "Assinatura criada com sucesso", 201);
+        // Agora o compilador sabe que .Value não é nulo aqui
+        var responseDto = new CreatePaymentDto(
+            subscriptionResult.Value.Id.ToString(),
+            subscriptionResult.Value.TransactionId
+        );
+
+        return OperationResult<CreatePaymentDto>.Succeeded(responseDto, "Assinatura criada com sucesso", 201);
+    }
+
+    public async Task<OperationResult<bool>> ProcessPaymentCallback(string paymentId)
+    {
+        if (string.IsNullOrEmpty(paymentId))
+        {
+            return OperationResult<bool>.Failed(false, "ID do pagamento inválido.", 400);
+        }
+        var result = await _subscriptionService.ProcessPaymentCallbackAsync(paymentId);
+
+        if (!result.IsSuccess)
+        {
+            return OperationResult<bool>.Failed(false, result.Error ?? "", 400);
+        }
+        return OperationResult<bool>.Succeeded(true, "Callback processado com sucesso.", 200);
+    }
+
+    public async Task<OperationResult<SubscriptionDto>> GetSubscriptionByClientId(string clientId)
+    {
+        if (!Guid.TryParse(clientId, out var clientGuid))
+        {
+            return OperationResult<SubscriptionDto>.Failed(null, "ID de cliente inválido.", 400);
+        }
+
+        var result = await _subscriptionService.GetSubscriptionByClientAsync(clientGuid);
+
+        if (!result.IsSuccess || result.Value == null)
+        {
+            return OperationResult<SubscriptionDto>.Failed(null, result.Error ?? "Assinatura não encontrada.", 404);
+        }
+
+        return OperationResult<SubscriptionDto>.Succeeded(result.Value.ToSubscriptionDto(), "Assinatura encontrada.");
     }
 }

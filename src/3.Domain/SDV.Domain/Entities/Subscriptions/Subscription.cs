@@ -10,6 +10,7 @@ public class Subscription : BaseEntity
     public DateTime StartDate { get; private set; }
     public DateTime? EndDate { get; private set; }
     public SubscriptionStatus Status { get; private set; }
+    public string TransactionId { get; private set; }
 
     public Subscription(Guid clientId, Guid planId)
     {
@@ -17,9 +18,13 @@ public class Subscription : BaseEntity
         PlanId = planId;
         StartDate = DateTime.UtcNow;
         Status = SubscriptionStatus.Pending;
+        TransactionId = string.Empty;
+
     }
 
     public void Activate() => Status = SubscriptionStatus.Active;
     public void Expire() => Status = SubscriptionStatus.Expired;
+    public void Fail() => Status = SubscriptionStatus.Failed;
     public void SetEndDate(DateTime endDate) => EndDate = endDate;
+    public void SetTransactionId(string transactionId) => TransactionId = transactionId;
 }

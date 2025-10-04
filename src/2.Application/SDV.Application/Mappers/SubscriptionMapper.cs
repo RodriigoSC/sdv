@@ -1,8 +1,41 @@
 using System;
+using SDV.Application.Dtos.Subscriptions;
+using SDV.Domain.Entities.Subscriptions;
 
 namespace SDV.Application.Mappers;
 
-public class SubscriptionMapper
+public static class SubscriptionMapper
 {
+    // <summary>
+    /// Converte uma entidade Subscription para um SubscriptionDto.
+    /// </summary>
+    public static SubscriptionDto ToSubscriptionDto(this Subscription subscription)
+    {
+        if (subscription == null) return null!;
+
+        return new SubscriptionDto
+        {
+            Id = subscription.Id.ToString(),
+            ClientId = subscription.ClientId.ToString(),
+            PlanId = subscription.PlanId.ToString(),
+            StartDate = subscription.StartDate,
+            EndDate = subscription.EndDate,
+            Status = subscription.Status,
+            TransactionId = subscription.TransactionId
+        };
+    }
+
+    /// <summary>
+    /// Converte uma lista de entidades Subscription para uma lista de SubscriptionDto.
+    /// </summary>
+    public static IEnumerable<SubscriptionDto> ToSubscriptionDtoList(this IEnumerable<Subscription> subscriptions)
+    {
+        if (subscriptions == null) yield break;
+
+        foreach (var subscription in subscriptions)
+        {
+            yield return subscription.ToSubscriptionDto();
+        }
+    }
 
 }
