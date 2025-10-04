@@ -1,4 +1,4 @@
-namespace SDV.Domain.Enums.Payments;
+namespace SDV.Domain.Enums.Subscriptions;
 
 /// <summary>
 /// Representa o status de uma assinatura.
