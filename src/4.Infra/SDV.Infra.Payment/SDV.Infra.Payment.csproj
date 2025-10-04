@@ -11,7 +11,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../3.Domain/SDV.Domain/SDV.Domain.csproj" />
+      <PackageReference Include="mercadopago-sdk" Version="2.8.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../3.Domain/SDV.Domain/SDV.Domain.csproj" />    
   </ItemGroup>
 
 </Project>

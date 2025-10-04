@@ -2,10 +2,12 @@ using Infra.RateLimit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SDV.Application.Resolver;
+using SDV.Domain.Interfaces.Payments;
 using SDV.Infra.Cache;
 using SDV.Infra.Consul;
 using SDV.Infra.Data.MongoDB;
 using SDV.Infra.Data.Resolver;
+using SDV.Infra.Payment;
 using SDV.Infra.Vault;
 
 namespace SDV.Infra.IoC
@@ -59,8 +61,20 @@ namespace SDV.Infra.IoC
                 return new MongoDBRepository(mongoConn).SetDatabase(mongoDatabase);
             });
 
+            services.AddSingleton<IPaymentGateway>(sp =>
+            {
+                var vault = sp.GetRequiredService<IVaultService>();
+                var mountPoint = $"sdv/{environment}";
+
+                var apiKey = vault.GetKeyAsync("keys", "PaymentGateway.ApiKey", mountPoint).GetAwaiter().GetResult();
+                
+                if (string.IsNullOrEmpty(apiKey))
+                    throw new InvalidOperationException("Payment Gateway API key not found in Vault.");
+
+                return new MercadoPagoGateway(apiKey);
+            });
             
-            services.AddMemoryCache();
+            services.AddMemoryCache();            
             services.AddSingleton<ICacheService, MemoryCacheService>();
             services.AddSingleton<IRateLimiterService>(sp => new MemoryRateLimiterService(100)); 
 

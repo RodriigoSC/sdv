@@ -3,18 +3,25 @@ using SDV.Domain.Interfaces.Agendas;
 using SDV.Domain.Interfaces.Calendars;
 using SDV.Domain.Interfaces.Clients;
 using SDV.Domain.Interfaces.Messages;
+using SDV.Domain.Interfaces.Payments;
 using SDV.Domain.Interfaces.Planners;
+using SDV.Domain.Interfaces.Plans;
+using SDV.Domain.Interfaces.Subscriptions;
 using SDV.Infra.Data.MongoDB;
 using SDV.Infra.Data.Repository.Agendas;
 using SDV.Infra.Data.Repository.Calendars;
 using SDV.Infra.Data.Repository.Clients;
 using SDV.Infra.Data.Repository.Messages;
+using SDV.Infra.Data.Repository.Payments;
 using SDV.Infra.Data.Repository.Planners;
+using SDV.Infra.Data.Repository.Plans;
+using SDV.Infra.Data.Repository.Subscriptions;
 using SDV.Infra.Data.Service.Agendas;
 using SDV.Infra.Data.Service.Calendars;
 using SDV.Infra.Data.Service.Clients;
 using SDV.Infra.Data.Service.Messages;
 using SDV.Infra.Data.Service.Planners;
+using SDV.Infra.Data.Service.Subscriptions;
 using SDV.Infra.File;
 
 namespace SDV.Infra.Data.Resolver;
@@ -41,7 +48,14 @@ public static class ResolverIoC
         //Message
         services.AddTransient<IMessageRepository, MessageRepository>();
         services.AddTransient<IMessageService, MessageService>();
-
+        //Subscription
+        services.AddTransient<ISubscriptionRepository, SubscriptionRepository>();
+        services.AddTransient<ISubscriptionService, SubscriptionService>();
+        //Plan
+        services.AddTransient<IPlanRepository, PlanRepository>();
+        //Payment
+        services.AddTransient<IPaymentRepository, PaymentRepository>();
+        
         // Agenda File Generator        
         services.AddTransient<IAgendaFileGeneratorService>(sp =>
         {
