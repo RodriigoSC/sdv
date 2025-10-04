@@ -7,23 +7,34 @@ using SDV.Domain.Entities.Plans;
 using SDV.Domain.Entities.Subscriptions;
 using SDV.Domain.Enums.Payments;
 using SDV.Domain.Interfaces.Payments;
+using SDV.Infra.Payment.Model;
 
 namespace SDV.Infra.Payment;
 
 public class MercadoPagoGateway : IPaymentGateway
 {
-    private readonly string _accessToken;
+    private readonly MercadoPagoSettings _settings;
 
-    public MercadoPagoGateway(string accessToken)
+    public MercadoPagoGateway(MercadoPagoSettings settings)
     {
-        _accessToken = accessToken;
-        MercadoPagoConfig.AccessToken = _accessToken;
+        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        MercadoPagoConfig.AccessToken = _settings.AccessToken;
     }
 
     public async Task<Result<string>> CreatePaymentAsync(Subscription subscription, Plan plan)
     {
         try
         {
+            if (plan.Price <= 0)
+            {
+                return Result<string>.Failure("Valor do plano inválido");
+            }
+
+            if (plan.Price > 999999.99m)
+            {
+                return Result<string>.Failure("Valor excede o limite permitido");
+            }
+            
             var request = new PreferenceRequest
             {
                 ExternalReference = subscription.Id.ToString(),
@@ -40,13 +51,16 @@ public class MercadoPagoGateway : IPaymentGateway
                     },
                 BackUrls = new PreferenceBackUrlsRequest
                 {
-                    Success = "http://localhost:4200/subscribe/success", // Altere para sua URL de front-end
-                    Failure = "http://localhost:4200/subscribe/failure",
-                    Pending = "http://localhost:4200/subscribe/pending",
+                    Success = _settings.BackUrls.Success,
+                    Failure = _settings.BackUrls.Failure,
+                    Pending = _settings.BackUrls.Pending,
                 },
                 AutoReturn = "approved",
-                NotificationUrl = "https://f81f-45-239-128-115.ngrok-free.app/api/Subscription/payment/callback" // **IMPORTANTE**: Use uma URL pública (ngrok para testes)
+                NotificationUrl = $"{_settings.NotificationUrl}?secret={_settings.WebhookSecret}"
+
             };
+
+            
 
             var client = new PreferenceClient();
             Preference preference = await client.CreateAsync(request);
@@ -65,7 +79,7 @@ public class MercadoPagoGateway : IPaymentGateway
     {
         try
         {
-            var client = new MercadoPago.Client.Payment.PaymentClient();
+            var client = new PaymentClient();
             MercadoPago.Resource.Payment.Payment payment = await client.GetAsync(long.Parse(paymentId));
 
             return payment.Status switch
@@ -80,7 +94,7 @@ public class MercadoPagoGateway : IPaymentGateway
             return Result<PaymentStatus>.Failure($"Erro ao obter status do pagamento: {ex.Message}");
         }
     }
-        
+
     public async Task<Result<string>> GetPaymentExternalReferenceAsync(string paymentId)
     {
         try
@@ -100,4 +114,18 @@ public class MercadoPagoGateway : IPaymentGateway
             return Result<string>.Failure($"Erro ao obter referência do pagamento: {ex.Message}");
         }
     }
+    
+     // Política de retry com backoff exponencial
+    /*_retryPolicy = Policy<TResult>
+        .Handle<HttpRequestException>()
+        .Or<TimeoutRejectedException>()
+        .WaitAndRetryAsync(
+            retryCount: 3,
+            sleepDurationProvider: attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)),
+            onRetry: (outcome, timespan, retryAttempt, context) =>
+            {
+                _logger.LogWarning(
+                    "Tentativa {RetryAttempt} falhou. Aguardando {Delay}s",
+                    retryAttempt, timespan.TotalSeconds);
+            });*/
 }

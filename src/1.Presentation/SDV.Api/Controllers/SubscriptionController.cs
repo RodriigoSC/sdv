@@ -1,4 +1,3 @@
-using System;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 using SDV.Api.Middlewares;
@@ -11,10 +10,14 @@ namespace SDV.Api.Controllers;
 public class SubscriptionController : BaseController
 {
     private readonly ISubscriptionApplication _subscriptionApplication;
+    private readonly ILogger<SubscriptionController> _logger;
 
-    public SubscriptionController(ISubscriptionApplication subscriptionApplication)
+
+    public SubscriptionController(ISubscriptionApplication subscriptionApplication, ILogger<SubscriptionController> logger)
     {
         _subscriptionApplication = subscriptionApplication;
+        _logger = logger;
+
     }
 
     [HttpPost("subscribe/{planId}")]
@@ -38,18 +41,57 @@ public class SubscriptionController : BaseController
     [HttpPost("payment/callback")]
     public async Task<IActionResult> PaymentCallback([FromBody] JObject payload)
     {
-        // O Mercado Pago envia um payload com o ID do pagamento dentro de "data.id" quando o tipo é "payment"
-        string? type = payload["type"]?.ToString();
-        if (type == "payment")
-        {
-            string? paymentId = payload["data"]?["id"]?.ToString();
-            if (!string.IsNullOrEmpty(paymentId))
+       try
+        {            
+            // Log do payload completo para debug
+            _logger.LogInformation("Webhook recebido do Mercado Pago: {Payload}", payload.ToString());
+            
+
+            // Validação básica do payload
+            string? type = payload["type"]?.ToString();
+            
+            if (string.IsNullOrEmpty(type))
             {
-                await _subscriptionApplication.ProcessPaymentCallback(paymentId);
+                _logger.LogWarning("Webhook recebido sem tipo definido");
+                return BadRequest("Tipo de notificação não especificado");
             }
+
+            // O Mercado Pago envia diferentes tipos: payment, merchant_order, etc.
+            if (type == "payment")
+            {
+                string? paymentId = payload["data"]?["id"]?.ToString();
+                
+                if (string.IsNullOrEmpty(paymentId))
+                {
+                    _logger.LogWarning("Webhook de pagamento sem ID");
+                    return BadRequest("ID do pagamento não especificado");
+                }
+
+                _logger.LogInformation("Processando pagamento ID: {PaymentId}", paymentId);
+                
+                var result = await _subscriptionApplication.ProcessPaymentCallback(paymentId);
+                
+                if (!result.IsSuccess)
+                {
+                    _logger.LogError("Erro ao processar callback: {Error}", result.Message);
+                    // Ainda retorna 200 para o MP não reenviar
+                    return Ok(new { processed = false, error = result.Message });
+                }
+
+                _logger.LogInformation("Pagamento {PaymentId} processado com sucesso", paymentId);
+
+                return Ok(new { processed = true });
+            }
+
+            // Outros tipos de notificação
+            _logger.LogInformation("Tipo de notificação {Type} recebido mas não processado", type);
+            return Ok(new { processed = false, reason = "tipo não processado" });
         }
-        
-        // Retorna 200 OK para o Mercado Pago para confirmar o recebimento.
-        return Ok();
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao processar webhook do Mercado Pago");
+            // Retorna 200 para o MP não continuar reenviando
+            return Ok(new { processed = false, error = "erro interno" });
+        }
     }
 }

@@ -8,6 +8,7 @@ using SDV.Infra.Consul;
 using SDV.Infra.Data.MongoDB;
 using SDV.Infra.Data.Resolver;
 using SDV.Infra.Payment;
+using SDV.Infra.Payment.Model;
 using SDV.Infra.Vault;
 
 namespace SDV.Infra.IoC
@@ -43,7 +44,7 @@ namespace SDV.Infra.IoC
             });
             
             
-            services.AddSingleton<IMongoDBRepository>(sp =>
+            services.AddSingleton(sp =>
             {
                 var vault = sp.GetRequiredService<IVaultService>();
                 var mountPoint = $"sdv/{environment}";
@@ -64,14 +65,36 @@ namespace SDV.Infra.IoC
             services.AddSingleton<IPaymentGateway>(sp =>
             {
                 var vault = sp.GetRequiredService<IVaultService>();
+                var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "production";
                 var mountPoint = $"sdv/{environment}";
 
                 var apiKey = vault.GetKeyAsync("keys", "PaymentGateway.ApiKey", mountPoint).GetAwaiter().GetResult();
-                
+                var webhookSecret = vault.GetKeyAsync("keys", "PaymentGateway.WebhookSecret", mountPoint).GetAwaiter().GetResult();
+                var notificationUrl = vault.GetKeyAsync("keys", "PaymentGateway.NotificationUrl", mountPoint).GetAwaiter().GetResult();
+
+                var successUrl = vault.GetKeyAsync("keys", "PaymentGateway.BackUrls.Success", mountPoint).GetAwaiter().GetResult();
+                var failureUrl = vault.GetKeyAsync("keys", "PaymentGateway.BackUrls.Failure", mountPoint).GetAwaiter().GetResult();
+                var pendingUrl = vault.GetKeyAsync("keys", "PaymentGateway.BackUrls.Pending", mountPoint).GetAwaiter().GetResult();
+
                 if (string.IsNullOrEmpty(apiKey))
                     throw new InvalidOperationException("Payment Gateway API key not found in Vault.");
 
-                return new MercadoPagoGateway(apiKey);
+                if (string.IsNullOrEmpty(webhookSecret))
+                    throw new InvalidOperationException("Payment Gateway Webhook Secret not found in Vault.");
+
+                if (string.IsNullOrEmpty(notificationUrl))
+                    throw new InvalidOperationException("Payment Gateway NotificationUrl not found in Vault.");
+
+                var backUrls = new BackUrls
+                {
+                    Success = successUrl ?? string.Empty,
+                    Failure = failureUrl ?? string.Empty,
+                    Pending = pendingUrl ?? string.Empty
+                };
+
+                var settings = new MercadoPagoSettings(apiKey, webhookSecret, notificationUrl, backUrls);
+
+                return new MercadoPagoGateway(settings);
             });
             
             services.AddMemoryCache();            

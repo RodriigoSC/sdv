@@ -3,7 +3,7 @@ using SDV.Domain.Enums.Plans;
 
 namespace SDV.Domain.Entities.Plans;
 
-public class Plan: BaseEntity
+public class Plan : BaseEntity
 {
     public string Name { get; private set; }
     public string Description { get; private set; }
@@ -21,4 +21,15 @@ public class Plan: BaseEntity
     }
 
     public void Deactivate() => IsActive = false;
+    
+    public DateTime CalculateEndDate(PlanType planType)
+    {
+        return planType switch
+        {
+            PlanType.Monthly => DateTime.UtcNow.AddMonths(1),
+            PlanType.Semiannually => DateTime.UtcNow.AddMonths(6),
+            PlanType.Annually => DateTime.UtcNow.AddYears(1),
+            _ => DateTime.UtcNow.AddMonths(1)
+        };
+    }
 }

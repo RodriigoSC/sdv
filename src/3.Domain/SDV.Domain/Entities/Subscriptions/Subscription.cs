@@ -11,6 +11,8 @@ public class Subscription : BaseEntity
     public DateTime? EndDate { get; private set; }
     public SubscriptionStatus Status { get; private set; }
     public string TransactionId { get; private set; }
+    public string? LastProcessedPaymentId { get; private set; }
+    public DateTime? LastPaymentProcessedAt { get; private set; }
 
     public Subscription(Guid clientId, Guid planId)
     {
@@ -27,4 +29,9 @@ public class Subscription : BaseEntity
     public void Fail() => Status = SubscriptionStatus.Failed;
     public void SetEndDate(DateTime endDate) => EndDate = endDate;
     public void SetTransactionId(string transactionId) => TransactionId = transactionId;
+    public void SetLastProcessedPayment(string paymentId)
+    {
+        LastProcessedPaymentId = paymentId;
+        LastPaymentProcessedAt = DateTime.UtcNow;
+    }
 }
