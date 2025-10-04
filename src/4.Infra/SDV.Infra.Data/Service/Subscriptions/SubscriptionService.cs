@@ -130,8 +130,10 @@ public class SubscriptionService : ISubscriptionService
                 // Mantém como Pending, não faz nada
                 break;
         }
-
+        
+        subscription.SetLastProcessedPayment(paymentId);
         await _subscriptionRepository.UpdateAsync(subscription);
+        
         return Result<bool>.Success(true);
     }
 }
