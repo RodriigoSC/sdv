@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../2.Application/SDV.Application/SDV.Application.csproj" />
+    <ProjectReference Include="../Infra.Cache/SDV.Infra.Cache.csproj" />
+    <ProjectReference Include="../Infra.RateLimit/SDV.Infra.RateLimit.csproj" />
+    <ProjectReference Include="../SDV.Infra.Consul/SDV.Infra.Consul.csproj" />
+    <ProjectReference Include="../SDV.Infra.Data/SDV.Infra.Data.csproj" />
+    <ProjectReference Include="../SDV.Infra.Payment/SDV.Infra.Payment.csproj" />
+    <ProjectReference Include="../SDV.Infra.Vault/SDV.Infra.Vault.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="6.0.28" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="6.0.28" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
+  </ItemGroup>
+
+</Project>
