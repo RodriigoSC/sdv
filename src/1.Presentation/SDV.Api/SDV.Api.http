@@ -1,0 +1,6 @@
+@SDV.Api_HostAddress = http://localhost:5227
+
+GET {{SDV.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
