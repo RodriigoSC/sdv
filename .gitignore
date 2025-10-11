@@ -1,0 +1,57 @@
+# Build Folders
+bin/
+obj/
+out/
+
+# Visual Studio / Rider / IDE
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.idea/
+
+# Visual Studio Code
+.vscode/
+
+# NuGet Packages
+*.nupkg
+packages/
+.nuget/
+
+# Dotnet CLI
+*.dotnet/
+
+# ASP.NET / Web
+wwwroot/
+*.db
+*.sqlite
+*.mdf
+*.ldf
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.DS_Store
+
+# Publish output
+publish/
+
+# Rider
+.idea/
+
+# Resharper
+_ReSharper*/
+*.DotSettings.user
+
+# Others
+*.vsix
+
+.sonarqube
+analisar.sh
+Info.md
