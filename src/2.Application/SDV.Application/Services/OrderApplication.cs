@@ -3,6 +3,9 @@ using SDV.Application.Dtos.Payments;
 using SDV.Application.Interfaces;
 using SDV.Application.Mappers;
 using SDV.Application.Results;
+using SDV.Domain.Entities.Orders;
+using SDV.Domain.Entities.Payments;
+using SDV.Domain.Enums.Payments;
 using SDV.Domain.Interfaces.Clients;
 using SDV.Domain.Interfaces.Orders;
 using SDV.Domain.Interfaces.Plans;
@@ -38,17 +41,20 @@ public class OrderApplication : IOrderApplication
             return OperationResult<CreatePaymentDto>.Failed(null, "Cliente ou Plano não encontrado", 404);
         }
 
-        var subscriptionResult = await _subscriptionService.CreateOrderAsync(client, plan);
+        var order = new Order(client, plan);
+        var payment = new Payment(order.Id, plan.Price, PaymentProvider.MercadoPago);
+        order.AddPayment(payment);
+        
+        var subscriptionResult = await _subscriptionService.CreateOrderAsync(order);
 
-        if (!subscriptionResult.IsSuccess || subscriptionResult.Value == null) // Verificação de nulidade
+        if (!subscriptionResult.IsSuccess || subscriptionResult.Value == null) 
         {
             return OperationResult<CreatePaymentDto>.Failed(null, subscriptionResult.Error ?? "Falha ao criar a assinatura.", 400);
         }
-
-        // Agora o compilador sabe que .Value não é nulo aqui
+        
         var responseDto = new CreatePaymentDto(
             subscriptionResult.Value.Id.ToString(),
-            subscriptionResult.Value.TransactionId
+            subscriptionResult.Value.Payments.First().PaymentUrl
         );
 
         return OperationResult<CreatePaymentDto>.Succeeded(responseDto, "Assinatura criada com sucesso", 201);
@@ -81,7 +87,7 @@ public class OrderApplication : IOrderApplication
             return OperationResult<OrderDto>.Failed(null, "ID de cliente inválido.", 400);
         }
 
-        var result = await _subscriptionService.GetOrderByClientAsync(clientGuid);
+        var result = await _subscriptionService.GetLastOrderByClientAsync(clientGuid);
 
         if (!result.IsSuccess || result.Value == null)
         {

@@ -31,7 +31,7 @@ public class PaymentService : IPaymentService
             var checkoutUrl = await gateway.CreatePaymentAsync(request);
 
             return checkoutUrl.IsSuccess
-                ? Result<string>.Success(checkoutUrl.Value)
+                ? Result<string>.Success(checkoutUrl.Value ?? string.Empty)
                 : Result<string>.Failure(checkoutUrl.Error ?? "Erro ao criar pagamento");
         }
         catch (Exception ex)
@@ -43,5 +43,10 @@ public class PaymentService : IPaymentService
     public Task<Result<Domain.Entities.Payments.Payment>> ProcessPaymentAsync(Domain.Entities.Payments.Payment payment)
     {
         throw new NotImplementedException();
+    }
+    
+    public IPaymentGateway GetPaymentGateway(PaymentProvider provider)
+    {
+        return _paymentProviderFactory.GetProvider(provider);
     }
 }
