@@ -1,4 +1,4 @@
-namespace SDV.Infra.Payment.Model.PagarMe;
+namespace SDV.Infra.Gateway.Model.PagarMe;
 
 public class PagarMeSettings
 {

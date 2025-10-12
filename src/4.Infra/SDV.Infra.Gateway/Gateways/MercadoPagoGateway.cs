@@ -9,9 +9,9 @@ using SDV.Domain.Entities.Commons;
 using SDV.Domain.Entities.Payments;
 using SDV.Domain.Enums.Payments;
 using SDV.Domain.Interfaces.Payments;
-using SDV.Infra.Payment.Model.MercadoPago;
+using SDV.Infra.Gateway.Model.MercadoPago;
 
-namespace SDV.Infra.Payment;
+namespace SDV.Infra.Gateway.Gateways;
 
 public class MercadoPagoGateway : IPaymentGateway
 {
@@ -27,31 +27,18 @@ public class MercadoPagoGateway : IPaymentGateway
 
         _retryPolicy = Policy
             .Handle<HttpRequestException>()
-            .WaitAndRetryAsync(
-                retryCount: 3,
-                sleepDurationProvider: attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)),
+            .WaitAndRetryAsync(3, attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)),
                 onRetry: (exception, timespan, retryAttempt, context) =>
                 {
-                    _logger.LogWarning("Falha ao chamar a API do Mercado Pago. Tentativa {RetryAttempt}. Aguardando {Delay}s. Erro: {Exception}",
-                        retryAttempt, timespan.TotalSeconds, exception.Message);
+                    _logger.LogWarning("Falha na API do Mercado Pago. Tentativa {RetryAttempt}. Erro: {Exception}",
+                        retryAttempt, exception.Message);
                 });
     }
 
-    // ✅ CORRIGIDO: Assinatura padronizada
     public async Task<Result<string>> CreatePaymentAsync(PaymentGatewayRequest request)
     {
         try
         {
-            if (request.Amount <= 0)
-            {
-                return Result<string>.Failure("Valor do pagamento inválido");
-            }
-
-            if (request.Amount > 999999.99m)
-            {
-                return Result<string>.Failure("Valor excede o limite permitido");
-            }
-
             var mercadoPagoRequest = new PreferenceRequest
             {
                 ExternalReference = request.ExternalReference,
@@ -60,22 +47,12 @@ public class MercadoPagoGateway : IPaymentGateway
                     new PreferenceItemRequest
                     {
                         Title = request.Description,
-                        Description = request.Description,
                         Quantity = 1,
                         CurrencyId = "BRL",
                         UnitPrice = request.Amount,
                     },
                 },
-                BackUrls = new MercadoPago.Client.Preference.PreferenceBackUrlsRequest
-                {
-                    Success = request.ReturnSuccessUrl,
-                    Failure = request.ReturnFailureUrl,
-                    Pending = request.ReturnPendingUrl,
-                },
-                AutoReturn = "approved",
-                NotificationUrl = !string.IsNullOrEmpty(request.WebhookSecret) 
-                    ? $"{request.WebhookUrl}?secret={request.WebhookSecret}"
-                    : request.WebhookUrl
+                NotificationUrl = _settings.NotificationUrl
             };
 
             var client = new PreferenceClient();
@@ -85,11 +62,12 @@ public class MercadoPagoGateway : IPaymentGateway
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro final ao criar preferência de pagamento após todas as tentativas.");
+            _logger.LogError(ex, "Erro final ao criar preferência de pagamento no Mercado Pago.");
             return Result<string>.Failure($"Erro ao criar preferência de pagamento: {ex.Message}");
         }
     }
 
+    // ✅ IMPLEMENTADO CONFORME A INTERFACE
     public async Task<Result<PaymentStatus>> GetPaymentStatusAsync(string paymentId)
     {
         try
@@ -97,20 +75,22 @@ public class MercadoPagoGateway : IPaymentGateway
             var client = new PaymentClient();
             var payment = await _retryPolicy.ExecuteAsync(() => client.GetAsync(long.Parse(paymentId)));
 
-            return payment.Status switch
+            if (payment == null)
             {
-                "approved" => Result<PaymentStatus>.Success(PaymentStatus.Approved),
-                "rejected" => Result<PaymentStatus>.Success(PaymentStatus.Refunded),
-                _ => Result<PaymentStatus>.Success(PaymentStatus.Pending),
-            };
+                return Result<PaymentStatus>.Failure("Pagamento não encontrado no gateway.");
+            }
+
+            var status = ConvertMercadoPagoStatus(payment.Status);
+            return Result<PaymentStatus>.Success(status);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro final ao obter status do pagamento {PaymentId} após todas as tentativas.", paymentId);
+            _logger.LogError(ex, "Erro ao obter status do pagamento {PaymentId}.", paymentId);
             return Result<PaymentStatus>.Failure($"Erro ao obter status do pagamento: {ex.Message}");
         }
     }
 
+    // ✅ IMPLEMENTADO CONFORME A INTERFACE
     public async Task<Result<string>> GetPaymentExternalReferenceAsync(string paymentId)
     {
         try
@@ -120,20 +100,23 @@ public class MercadoPagoGateway : IPaymentGateway
 
             if (payment == null || string.IsNullOrEmpty(payment.ExternalReference))
             {
-                return Result<string>.Failure("Referência externa não encontrada no pagamento.");
+                return Result<string>.Failure("Referência externa não encontrada para o pagamento.");
             }
 
             return Result<string>.Success(payment.ExternalReference);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro final ao obter referência externa do pagamento {PaymentId} após todas as tentativas.", paymentId);
+            _logger.LogError(ex, "Erro ao obter referência externa do pagamento {PaymentId}.", paymentId);
             return Result<string>.Failure($"Erro ao obter referência do pagamento: {ex.Message}");
         }
     }
 
+    // ✅ IMPLEMENTADO CONFORME A INTERFACE
     public Result<bool> ValidateWebhookSecret(string secret)
     {
+        // Esta lógica deve ser melhorada para validar a assinatura completa do webhook
+        // Mas para validar um "secret" simples, está correto.
         if (string.IsNullOrEmpty(secret) || secret != _settings.WebhookSecret)
         {
             _logger.LogWarning("Falha na validação do Webhook Secret.");
@@ -141,5 +124,19 @@ public class MercadoPagoGateway : IPaymentGateway
         }
 
         return Result<bool>.Success(true);
+    }
+
+    // ✔️ FUNÇÃO HELPER: Centraliza a conversão de status e corrige a lógica
+    private PaymentStatus ConvertMercadoPagoStatus(string? mpStatus)
+    {
+        return mpStatus switch
+        {
+            "approved" => PaymentStatus.Approved,
+            "rejected" => PaymentStatus.Failed,     // Corrigido: "rejeitado" é Falha, não Reembolsado
+            "cancelled" => PaymentStatus.Cancelled,
+            "refunded" => PaymentStatus.Refunded,
+            "in_process" => PaymentStatus.Pending,
+            _ => PaymentStatus.Pending,
+        };
     }
 }

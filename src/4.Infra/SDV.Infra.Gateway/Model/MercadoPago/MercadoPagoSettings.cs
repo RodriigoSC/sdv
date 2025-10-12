@@ -1,4 +1,4 @@
-namespace SDV.Infra.Payment.Model.MercadoPago;
+namespace SDV.Infra.Gateway.Model.MercadoPago;
 
 public class MercadoPagoSettings
 {

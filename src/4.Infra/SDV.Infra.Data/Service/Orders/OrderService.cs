@@ -1,7 +1,6 @@
 using SDV.Domain.Entities.Commons;
 using SDV.Domain.Entities.Orders;
 using SDV.Domain.Entities.Payments;
-using SDV.Domain.Enums.Orders;
 using SDV.Domain.Enums.Payments;
 using SDV.Domain.Interfaces.Orders;
 using SDV.Domain.Interfaces.Payments;
@@ -26,103 +25,136 @@ public class OrderService : IOrderService
 
     public async Task<Result<Order>> CreateOrderAsync(Order order)
     {
-        var payment = order.Payments.First();
-        var paymentResult = await _paymentService.CreatePaymentAsync(new PaymentGatewayRequest
+        var payment = new Payment(order.ClientId, order.Id, order.Plan.Price, PaymentProvider.MercadoPago);
+        order.AddPayment(payment);
+
+        // Salva o estado inicial antes de chamar o gateway
+        await _orderRepository.AddAsync(order);
+        await _paymentRepository.AddAsync(payment);
+
+        // ✔️ CORRIGIDO: O request para o gateway DEVE conter nosso ID interno
+        var checkoutResult = await _paymentService.GeneratePaymentCheckoutAsync(new PaymentGatewayRequest
         {
             Amount = payment.Amount,
-            Description = $"Plano {order.Plan.Name}",
-            CustomerName = $"{order.Client.FirstName} {order.Client.LastName}",
-            CustomerEmail = order.Client.Email.ToString(),
-            ExternalReference = order.Id.ToString(),
-            PaymentProvider = payment.PaymentProvider,
+            ExternalReference = payment.Id.ToString(), 
         });
 
-        if (!paymentResult.IsSuccess)
+        if (!checkoutResult.IsSuccess)
         {
-            order.Suspend();
-            payment.MarkAsFailed();
-        }
-        else
-        {
-            payment.AddGatewayResponseDetails(paymentResult.Value, paymentResult.Value);
-        }
-
-        await _paymentRepository.AddAsync(payment);
-        await _orderRepository.AddAsync(order);
-
-        if (!paymentResult.IsSuccess)
-        {
-            return Result<Order>.Failure("O pagamento falhou. O pedido não foi processado.");
+            payment.Fail(checkoutResult.Error ?? "Falha na comunicação com o gateway.");
+            order.MarkPaymentFailed();
+            await _paymentRepository.UpdateAsync(payment);
+            await _orderRepository.UpdateAsync(order);
+            return Result<Order>.Failure("Falha ao criar pagamento. O pedido foi registrado como falho.");
         }
 
+        // ✔️ CORRIGIDO: O resultado é apenas a string da URL
+        var checkoutUrl = checkoutResult.Value;
+        payment.SetCheckoutUrl(checkoutUrl); // Atualiza a entidade apenas com a URL
+        await _paymentRepository.UpdateAsync(payment);
+        
         return Result<Order>.Success(order);
     }
 
-    public async Task<Result<Order>> GetLastOrderByClientAsync(Guid clientId)
+    // ✔️ CORRIGIDO: Lógica do Webhook totalmente refeita para ser robusta
+    public async Task<Result<bool>> ProcessPaymentCallbackAsync(string gatewayTransactionId)
     {
-        var order = await _orderRepository.GetLastOrderByClientIdAsync(clientId);
+        // Passo 1: Perguntar ao PaymentService qual é o nosso pagamento correspondente
+        var paymentInfoResult = await _paymentService.GetPaymentInfoFromGatewayAsync(gatewayTransactionId);
 
-        return order != null
-            ? Result<Order>.Success(order)
-            : Result<Order>.Failure("Nenhum pedido encontrado para este cliente.");
-    }
-
-    public async Task<Result<bool>> ProcessPaymentCallbackAsync(string paymentId, string webhookSecret)
-    {
-        try
+        if (!paymentInfoResult.IsSuccess)
         {
-            var paymentGateway = _paymentService.GetPaymentGateway(PaymentProvider.MercadoPago);
-            var externalReferenceResult = await paymentGateway.GetPaymentExternalReferenceAsync(paymentId);
+            return Result<bool>.Failure(paymentInfoResult.Error);
+        }
 
-            if (!externalReferenceResult.IsSuccess)
-            {
-                return Result<bool>.Failure("Não foi possível obter a referência externa do pagamento.");
-            }
+        var (internalPaymentId, statusFromGateway) = paymentInfoResult.Value;
 
-            if (!Guid.TryParse(externalReferenceResult.Value, out var orderId))
-            {
-                return Result<bool>.Failure("Referência externa inválida.");
-            }
-            
-            var order = await _orderRepository.GetByIdAsync(orderId);
-            if (order == null)
-                return Result<bool>.Failure("Pedido não encontrado.");
+        // Passo 2: Agora, com nosso ID interno, buscamos o pagamento no nosso banco
+        var payment = await _paymentRepository.GetByIdAsync(internalPaymentId);
+        if (payment == null)
+        {
+            return Result<bool>.Failure("Pagamento com a referência interna não encontrado no banco de dados.");
+        }
 
-            var payment = order.Payments.FirstOrDefault(p => p.TransactionId == paymentId || p.Id.ToString() == paymentId);
-            if (payment == null)
-                return Result<bool>.Failure("Pagamento não encontrado.");
-            
-            if (payment.Status != PaymentStatus.Pending)
-            {
-                return Result<bool>.Success(true); 
-            }
-            
-            var statusResult = await paymentGateway.GetPaymentStatusAsync(paymentId);
-
-            if (!statusResult.IsSuccess)
-            {
-                return Result<bool>.Failure("Não foi possível obter o status do pagamento.");
-            }
-
-            if (statusResult.Value == PaymentStatus.Approved)
-            {
-                payment.MarkAsApproved(paymentId);
-                order.Activate();
-            }
-            else
-            {
-                payment.MarkAsFailed();
-                order.Suspend();
-            }
-
-            await _paymentRepository.UpdateAsync(payment);
-            await _orderRepository.UpdateAsync(order);
-
+        // Idempotência: Se o pagamento já foi processado, não faz nada
+        if (payment.Status != PaymentStatus.Pending)
+        {
             return Result<bool>.Success(true);
         }
-        catch (Exception ex)
+
+        var order = await _orderRepository.GetByIdAsync(payment.OrderId);
+        if (order == null)
         {
-            return Result<bool>.Failure($"Erro ao processar callback de pagamento: {ex.Message}");
+            return Result<bool>.Failure("Pedido associado ao pagamento não encontrado.");
+        }
+        
+        // Passo 3: Atualizar o estado com base na informação do gateway
+        if (statusFromGateway == PaymentStatus.Approved)
+        {
+            // Agora finalmente temos o TransactionId do gateway para salvar
+            payment.Approve(gatewayTransactionId); 
+            order.Activate();
+        }
+        else
+        {
+            payment.Fail($"Pagamento rejeitado pelo gateway com status: {statusFromGateway}");
+            order.MarkPaymentFailed();
+        }
+
+        await _paymentRepository.UpdateAsync(payment);
+        await _orderRepository.UpdateAsync(order);
+
+        return Result<bool>.Success(true);
+    }
+    
+    #region Métodos de Leitura e Ações Simples (sem alterações)
+    public async Task<Result<Order>> ActivateOrderAsync(Guid orderId)
+    {
+        var order = await _orderRepository.GetByIdAsync(orderId);
+        if (order == null) return Result<Order>.Failure("Pedido não encontrado.");
+        try
+        {
+            order.Activate();
+            await _orderRepository.UpdateAsync(order);
+            return Result<Order>.Success(order);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Result<Order>.Failure(ex.Message);
         }
     }
+    
+    public async Task<Result<bool>> CancelOrderAsync(Guid orderId)
+    {
+        var order = await _orderRepository.GetByIdAsync(orderId);
+        if (order == null) return Result<bool>.Failure("Pedido não encontrado.");
+        order.Cancel(); 
+        await _orderRepository.UpdateAsync(order);
+        return Result<bool>.Success(true);
+    }
+    
+    public async Task<Result<Order>> GetOrderByIdAsync(Guid orderId)
+    {
+        var order = await _orderRepository.GetByIdAsync(orderId);
+        return order != null ? Result<Order>.Success(order) : Result<Order>.Failure("Pedido não encontrado.");
+    }
+
+    public async Task<Result<Order>> GetActiveOrderByClientAsync(Guid clientId)
+    {
+        var order = await _orderRepository.GetActiveOrderByClientIdAsync(clientId);
+        return order != null ? Result<Order>.Success(order) : Result<Order>.Failure("Nenhum pedido ativo ou pendente encontrado para este cliente.");
+    }
+
+    public async Task<Result<IEnumerable<Order>>> GetOrderHistoryByClientAsync(Guid clientId)
+    {
+        var orderHistory = await _orderRepository.GetOrderHistoryByClientIdAsync(clientId);
+        return Result<IEnumerable<Order>>.Success(orderHistory);
+    }
+
+    public async Task<Result<Order>> UpdateOrderAsync(Order order)
+    {
+        await _orderRepository.UpdateAsync(order);
+        return Result<Order>.Success(order);
+    }
+    #endregion
 }

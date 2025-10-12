@@ -29,6 +29,13 @@ public class OrderRepository : CommonRepository, IOrderRepository
         await _collection.DeleteOneAsync(filter);
     }
 
+    public async Task<Order?> GetActiveOrderByClientIdAsync(Guid clientId)
+    {
+        var filter = Builders<Order>.Filter.Eq(o => o.ClientId, clientId) &
+                    Builders<Order>.Filter.Eq(o => o.Status, OrderStatus.Active);
+        return await _collection.Find(filter).FirstOrDefaultAsync();
+    }
+
     public async Task<IEnumerable<Order>> GetAllAsync()
     {
         return await _collection.Find(_ => true).ToListAsync();
@@ -39,26 +46,15 @@ public class OrderRepository : CommonRepository, IOrderRepository
         return await _collection.Find(x => x.Id == id).FirstOrDefaultAsync();
     }
 
+    public async Task<IEnumerable<Order>> GetOrderHistoryByClientIdAsync(Guid clientId)
+    {
+        var filter = Builders<Order>.Filter.Eq(o => o.ClientId, clientId);
+        return await _collection.Find(filter).ToListAsync();
+    }
+
     public async Task UpdateAsync(Order entity)
     {
         var filter = Builders<Order>.Filter.Eq(x => x.Id, entity.Id);
         await _collection.ReplaceOneAsync(filter, entity);
-    }
-
-    public async Task<Order?> GetActiveOrPendingOrderByClientIdAsync(Guid clientId)
-    {
-        var filter = Builders<Order>.Filter.Eq(o => o.ClientId, clientId) &
-                        Builders<Order>.Filter.In(o => o.Status, new[] { OrderStatus.Pending, OrderStatus.Processing });
-
-        return await _collection.Find(filter).FirstOrDefaultAsync();
-    }
-
-    public async Task<Order?> GetLastOrderByClientIdAsync(Guid clientId)
-    {
-        var filter = Builders<Order>.Filter.Eq(o => o.ClientId, clientId);
-        
-        return await _collection.Find(filter)
-                                .SortByDescending(o => o.StartDate)
-                                .FirstOrDefaultAsync();
-    }
+    }    
 }

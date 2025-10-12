@@ -1,13 +1,13 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SDV.Domain.Enums.Payments;
-using SDV.Infra.Payment.Factories;
-using SDV.Infra.Payment.Gateways;
-using SDV.Infra.Payment.Model.MercadoPago;
-using SDV.Infra.Payment.Model.PagarMe;
+using SDV.Infra.Gateway.Factories;
+using SDV.Infra.Gateway.Gateways;
+using SDV.Infra.Gateway.Model.MercadoPago;
+using SDV.Infra.Gateway.Model.PagarMe;
 using SDV.Infra.Vault;
 
-namespace SDV.Infra.Payment.Resolver;
+namespace SDV.Infra.Gateway.Resolver;
 
 public static class ResolverIoc
 {
@@ -53,7 +53,7 @@ public static class ResolverIoc
         services.AddSingleton<PagarMeGateway>();
 
         // Registra a fábrica
-        services.AddSingleton<PaymentProviderFactory>();
+        services.AddSingleton<GatewayProviderFactory>();
 
         // Registra o IPaymentGateway dinamicamente
         services.AddSingleton(sp =>
@@ -61,7 +61,7 @@ public static class ResolverIoc
             var vault = sp.GetRequiredService<IVaultService>();
             var environment = configuration["ASPNETCORE_ENVIRONMENT"] ?? "Development";
             var mountPoint = $"sdv/{environment}";
-            var factory = sp.GetRequiredService<PaymentProviderFactory>();
+            var factory = sp.GetRequiredService<GatewayProviderFactory>();
 
             var providerName = vault.GetKeyAsync("keys", "Payment.Provider", mountPoint).GetAwaiter().GetResult();
             if (Enum.TryParse<PaymentProvider>(providerName, true, out var provider))

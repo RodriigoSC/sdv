@@ -2,7 +2,7 @@ using SDV.Domain.Entities.Clients;
 using SDV.Domain.Entities.Clients.ValueObjects;
 using SDV.Domain.Entities.Commons;
 using SDV.Domain.Enums;
-using SDV.Domain.Enums.Users;
+using SDV.Domain.Enums.Clients;
 using SDV.Domain.Exceptions;
 using SDV.Domain.Interfaces.Clients;
 using SDV.Domain.Specification;

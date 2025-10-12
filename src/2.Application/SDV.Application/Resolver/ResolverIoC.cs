@@ -24,8 +24,9 @@ public static class ResolverIoC
         services.AddTransient<IPlannerApplication, PlannerApplication>();
         services.AddTransient<ICalendarApplication, CalendarApplication>();
         services.AddTransient<IMessageApplication, MessageApplication>();
-        services.AddTransient<ISubscriptionApplication, SubscriptionApplication>();
         services.AddTransient<IPlanApplication, PlanApplication>();
+        services.AddTransient<IPaymentApplication, PaymentApplication>();
+        services.AddTransient<IOrderApplication, OrderApplication>();
 
 
 

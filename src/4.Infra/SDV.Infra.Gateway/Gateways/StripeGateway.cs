@@ -3,7 +3,7 @@ using SDV.Domain.Entities.Payments;
 using SDV.Domain.Enums.Payments;
 using SDV.Domain.Interfaces.Payments;
 
-namespace SDV.Infra.Payment.Gateways;
+namespace SDV.Infra.Gateway.Gateways;
 
 public class StripeGateway : IPaymentGateway
 {

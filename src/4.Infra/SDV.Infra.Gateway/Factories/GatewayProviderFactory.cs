@@ -1,15 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
 using SDV.Domain.Enums.Payments;
 using SDV.Domain.Interfaces.Payments;
-using SDV.Infra.Payment.Gateways;
+using SDV.Infra.Gateway.Gateways;
 
-namespace SDV.Infra.Payment.Factories;
+namespace SDV.Infra.Gateway.Factories;
 
-public class PaymentProviderFactory
+public class GatewayProviderFactory
 {
     private readonly IServiceProvider _serviceProvider;
 
-    public PaymentProviderFactory(IServiceProvider serviceProvider)
+    public GatewayProviderFactory(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;
     }

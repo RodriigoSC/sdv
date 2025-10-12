@@ -24,6 +24,7 @@ using SDV.Infra.Data.Service.Planners;
 using SDV.Infra.Data.Service.Plans;
 using SDV.Infra.Data.Service.Orders;
 using SDV.Infra.File;
+using SDV.Infra.Data.Service.Payments;
 
 namespace SDV.Infra.Data.Resolver;
 
@@ -55,9 +56,9 @@ public static class ResolverIoC
         //Plan
         services.AddTransient<IPlanRepository, PlanRepository>();
         services.AddTransient<IPlanService, PlanService>();
-
         //Payment
         services.AddTransient<IPaymentRepository, PaymentRepository>();
+        services.AddTransient<IPaymentService, PaymentService>();
         
         // Agenda File Generator        
         services.AddTransient<IAgendaFileGeneratorService>(sp =>

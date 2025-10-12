@@ -9,7 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="../../3.Domain/SDV.Domain/SDV.Domain.csproj" />
     <ProjectReference Include="../SDV.Infra.File/SDV.Infra.File.csproj" />
-    <ProjectReference Include="../SDV.Infra.Payment/SDV.Infra.Payment.csproj" />
+    <ProjectReference Include="../SDV.Infra.Gateway/SDV.Infra.Gateway.csproj" />
   </ItemGroup>
 
   <ItemGroup>
