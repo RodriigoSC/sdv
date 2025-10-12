@@ -5,7 +5,7 @@ namespace SDV.Application.Mappers;
 
 public static class OrderMapper
 {
-    public static OrderDto ToOrderDto(this Order order)
+    public static OrderDto ToDto(this Order order)
     {
         if (order == null) return null!;
 
@@ -14,20 +14,19 @@ public static class OrderMapper
             Id = order.Id.ToString(),
             ClientId = order.ClientId.ToString(),
             PlanId = order.PlanId.ToString(),
+            PlanName = order.Plan?.Name ?? string.Empty,
+            PlanPrice = order.Plan?.Price ?? 0,
             StartDate = order.StartDate,
             EndDate = order.EndDate,
-            Status = order.Status
+            Status = order.Status.ToString(),
+            ClientName = order.Client?.Name ?? string.Empty
         };
     }
-    
-    public static IEnumerable<OrderDto> ToOrderDtoList(this IEnumerable<Order> orders)
+
+    public static IEnumerable<OrderDto> ToDtoList(this IEnumerable<Order> orders)
     {
         if (orders == null) yield break;
-
         foreach (var order in orders)
-        {
-            yield return order.ToOrderDto();
-        }
+            yield return order.ToDto();
     }
-
 }

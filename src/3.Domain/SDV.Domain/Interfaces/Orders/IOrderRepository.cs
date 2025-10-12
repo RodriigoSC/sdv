@@ -9,6 +9,6 @@ public interface IOrderRepository
     Task AddAsync(Order entity);
     Task UpdateAsync(Order entity);
     Task DeleteAsync(Guid id);
-    Task<Order?> GetActiveOrPendingOrderByClientIdAsync(Guid clientId);
-    Task<Order?> GetLastOrderByClientIdAsync(Guid clientId);    
+    Task<Order?> GetActiveOrderByClientIdAsync(Guid clientId);
+    Task<IEnumerable<Order>> GetOrderHistoryByClientIdAsync(Guid clientId);  
 }
