@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using SDV.Api.Middlewares;
 using SDV.Application.Dtos.Orders;
 using SDV.Application.Interfaces;
+using SDV.Application.Results;
 
 namespace SDV.Api.Controllers
 {
@@ -10,7 +12,7 @@ namespace SDV.Api.Controllers
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
-    public class OrdersController : ControllerBase
+    public class OrdersController : BaseController
     {
         private readonly IOrderApplication _orderApplication;
         private readonly ILogger<OrdersController> _logger;
@@ -21,176 +23,130 @@ namespace SDV.Api.Controllers
             _logger = logger;
         }
 
+        #region Criação
+
         /// <summary>
         /// Cria um novo pedido
         /// </summary>
-        /// <param name="request">Dados do cliente e plano</param>
-        /// <returns>Detalhes do pedido criado</returns>
-        /// <response code="201">Pedido criado com sucesso</response>
-        /// <response code="400">Erro de validação</response>
-        /// <response code="404">Cliente ou plano não encontrado</response>
         [HttpPost]
-        [ProducesResponseType(typeof(OrderDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(OperationResult<OrderDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<OrderDto>> CreateOrderAsync(
-            [FromBody] CreateOrderRequestDto request)
+        public async Task<IActionResult> CreateOrderAsync([FromBody] CreateOrderRequestDto request)
         {
-            _logger.LogInformation("Criando novo pedido para Cliente: {ClientId}, Plano: {PlanId}", 
-                request.ClientId, request.PlanId);
+            var response = await _orderApplication.CreateOrderAsync(request);
+            int statusCode = response.OperationCode;
 
-            var result = await _orderApplication.CreateOrderAsync(request);
+            if (response.IsSuccess && (response.Data == null))
+                return NoContent();
 
-            if (!result.IsSuccess)
-            {
-                _logger.LogWarning("Falha ao criar pedido: {Message}", result.Message);
-                return StatusCode(result.OperationCode, new { message = result.Message });
-            }
-
-            _logger.LogInformation("Pedido criado com sucesso: {OrderId}", result.Data?.Id);
-            return CreatedAtAction(nameof(GetOrderAsync), 
-                new { orderId = result.Data!.Id }, 
-                result.Data);
+            return StatusCode(statusCode, CreateResponseObjectFromOperationResult(statusCode, response));
         }
+
+        #endregion
+
+        #region Consultas
 
         /// <summary>
         /// Obtém detalhes de um pedido específico
         /// </summary>
-        /// <param name="orderId">ID do pedido</param>
-        /// <returns>Detalhes do pedido</returns>
-        /// <response code="200">Pedido encontrado</response>
-        /// <response code="400">ID inválido</response>
-        /// <response code="404">Pedido não encontrado</response>
         [HttpGet("{orderId}")]
-        [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(OperationResult<OrderDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<OrderDto>> GetOrderAsync(string orderId)
+        public async Task<IActionResult> GetOrderAsync(string orderId)
         {
             _logger.LogInformation("Obtendo pedido: {OrderId}", orderId);
 
-            var result = await _orderApplication.GetOrderAsync(orderId);
+            var response = await _orderApplication.GetOrderAsync(orderId);
+            int statusCode = response.OperationCode;
 
-            if (!result.IsSuccess)
-            {
-                _logger.LogWarning("Pedido não encontrado: {OrderId}", orderId);
-                return StatusCode(result.OperationCode, new { message = result.Message });
-            }
+            if (!response.IsSuccess && statusCode == 404)
+                return NotFound();
 
-            return Ok(result.Data);
+            return StatusCode(statusCode, CreateResponseObjectFromOperationResult(statusCode, response));
         }
 
         /// <summary>
         /// Obtém o pedido ativo de um cliente
-        /// Retorna o pedido com status "Active" se existir
         /// </summary>
-        /// <param name="clientId">ID do cliente</param>
-        /// <returns>Detalhes do pedido ativo</returns>
-        /// <response code="200">Pedido ativo encontrado</response>
-        /// <response code="400">ID inválido</response>
-        /// <response code="404">Nenhum pedido ativo encontrado</response>
         [HttpGet("client/{clientId}/active")]
-        [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(OperationResult<OrderDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<OrderDto>> GetActiveOrderAsync(string clientId)
+        public async Task<IActionResult> GetActiveOrderAsync(string clientId)
         {
             _logger.LogInformation("Obtendo pedido ativo do cliente: {ClientId}", clientId);
 
-            var result = await _orderApplication.GetActiveOrderAsync(clientId);
+            var response = await _orderApplication.GetActiveOrderAsync(clientId);
+            int statusCode = response.OperationCode;
 
-            if (!result.IsSuccess)
-            {
-                _logger.LogWarning("Pedido ativo não encontrado para cliente: {ClientId}", clientId);
-                return StatusCode(result.OperationCode, new { message = result.Message });
-            }
+            if (!response.IsSuccess && statusCode == 404)
+                return NotFound();
 
-            return Ok(result.Data);
+            return StatusCode(statusCode, CreateResponseObjectFromOperationResult(statusCode, response));
         }
 
         /// <summary>
         /// Obtém histórico completo de pedidos de um cliente
         /// </summary>
-        /// <param name="clientId">ID do cliente</param>
-        /// <returns>Lista de todos os pedidos do cliente</returns>
-        /// <response code="200">Histórico encontrado</response>
-        /// <response code="400">ID inválido</response>
-        /// <response code="404">Nenhum pedido encontrado</response>
         [HttpGet("client/{clientId}")]
-        [ProducesResponseType(typeof(IEnumerable<OrderDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<IEnumerable<OrderDto>>> GetOrderHistoryAsync(string clientId)
+        [ProducesResponseType(typeof(OperationResult<IEnumerable<OrderDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<IActionResult> GetOrderHistoryAsync(string clientId)
         {
             _logger.LogInformation("Obtendo histórico de pedidos do cliente: {ClientId}", clientId);
 
-            var result = await _orderApplication.GetOrderHistoryAsync(clientId);
+            var response = await _orderApplication.GetOrderHistoryAsync(clientId);
+            int statusCode = response.OperationCode;
 
-            if (!result.IsSuccess)
-            {
-                _logger.LogWarning("Histórico não encontrado para cliente: {ClientId}", clientId);
-                return StatusCode(result.OperationCode, new { message = result.Message });
-            }
+            if (response.IsSuccess && (response.Data == null || !response.Data.Any()))
+                return NoContent();
 
-            return Ok(result.Data);
+            return StatusCode(statusCode, CreateResponseObjectFromOperationResult(statusCode, response));
         }
 
         /// <summary>
         /// Verifica se um pedido está ativo e válido
         /// </summary>
-        /// <param name="orderId">ID do pedido</param>
-        /// <returns>Status de atividade do pedido</returns>
-        /// <response code="200">Verificação realizada com sucesso</response>
-        /// <response code="400">ID inválido</response>
-        /// <response code="404">Pedido não encontrado</response>
         [HttpGet("{orderId}/is-active")]
-        [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(OperationResult<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<bool>> IsOrderActiveAsync(string orderId)
+        public async Task<IActionResult> IsOrderActiveAsync(string orderId)
         {
             _logger.LogInformation("Verificando se pedido está ativo: {OrderId}", orderId);
 
-            var result = await _orderApplication.IsOrderActiveAsync(orderId);
+            var response = await _orderApplication.IsOrderActiveAsync(orderId);
+            int statusCode = response.OperationCode;
 
-            if (!result.IsSuccess)
-            {
-                _logger.LogWarning("Erro ao verificar atividade do pedido: {OrderId}", orderId);
-                return StatusCode(result.OperationCode, new { message = result.Message });
-            }
+            if (!response.IsSuccess && statusCode == 404)
+                return NotFound();
 
-            return Ok(new { isActive = result.Data, message = result.Message });
+            return StatusCode(statusCode, CreateResponseObjectFromOperationResult(statusCode, response));
         }
 
+        #endregion
+
+        #region Cancelamento
+
         /// <summary>
-        /// Cancela um pedido
+        /// Cancela um pedido existente
         /// </summary>
-        /// <param name="orderId">ID do pedido a cancelar</param>
-        /// <returns>Status da operação</returns>
-        /// <response code="200">Pedido cancelado com sucesso</response>
-        /// <response code="400">Erro de validação</response>
-        /// <response code="404">Pedido não encontrado</response>
         [HttpDelete("{orderId}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(OperationResult<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> CancelOrderAsync(string orderId)
         {
             _logger.LogInformation("Cancelando pedido: {OrderId}", orderId);
 
-            var result = await _orderApplication.CancelOrderAsync(orderId);
+            var response = await _orderApplication.CancelOrderAsync(orderId);
+            int statusCode = response.OperationCode;
 
-            if (!result.IsSuccess)
-            {
-                _logger.LogWarning("Falha ao cancelar pedido: {OrderId}, Motivo: {Message}", 
-                    orderId, result.Message);
-                return StatusCode(result.OperationCode, new { message = result.Message });
-            }
+            if (!response.IsSuccess && statusCode == 404)
+                return NotFound();
 
-            _logger.LogInformation("Pedido cancelado com sucesso: {OrderId}", orderId);
-            return Ok(new { message = "Pedido cancelado com sucesso" });
+            return StatusCode(statusCode, CreateResponseObjectFromOperationResult(statusCode, response));
         }
+
+        #endregion
     }
 }
-
-
