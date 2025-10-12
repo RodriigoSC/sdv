@@ -3,36 +3,30 @@ using SDV.Domain.Entities.Orders;
 
 namespace SDV.Application.Mappers;
 
-public static class SubscriptionMapper
+public static class OrderMapper
 {
-    // <summary>
-    /// Converte uma entidade Subscription para um SubscriptionDto.
-    /// </summary>
-    public static OrderDto ToSubscriptionDto(this Order subscription)
+    public static OrderDto ToOrderDto(this Order order)
     {
-        if (subscription == null) return null!;
+        if (order == null) return null!;
 
         return new OrderDto
         {
-            Id = subscription.Id.ToString(),
-            ClientId = subscription.ClientId.ToString(),
-            PlanId = subscription.PlanId.ToString(),
-            StartDate = subscription.StartDate,
-            EndDate = subscription.EndDate,
-            Status = subscription.Status
+            Id = order.Id.ToString(),
+            ClientId = order.ClientId.ToString(),
+            PlanId = order.PlanId.ToString(),
+            StartDate = order.StartDate,
+            EndDate = order.EndDate,
+            Status = order.Status
         };
     }
-
-    /// <summary>
-    /// Converte uma lista de entidades Subscription para uma lista de SubscriptionDto.
-    /// </summary>
-    public static IEnumerable<OrderDto> ToSubscriptionDtoList(this IEnumerable<Order> subscriptions)
+    
+    public static IEnumerable<OrderDto> ToOrderDtoList(this IEnumerable<Order> orders)
     {
-        if (subscriptions == null) yield break;
+        if (orders == null) yield break;
 
-        foreach (var subscription in subscriptions)
+        foreach (var order in orders)
         {
-            yield return subscription.ToSubscriptionDto();
+            yield return order.ToOrderDto();
         }
     }
 

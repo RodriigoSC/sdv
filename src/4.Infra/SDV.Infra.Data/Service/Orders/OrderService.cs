@@ -8,10 +8,6 @@ using SDV.Domain.Interfaces.Payments;
 
 namespace SDV.Infra.Data.Service.Orders;
 
-/// <summary>
-/// Serviço de domínio para gestão de pedidos.
-/// Responsável por orquestrar a criação de pedidos e processamento de callbacks de pagamento.
-/// </summary>
 public class OrderService : IOrderService
 {
     private readonly IOrderRepository _orderRepository;
@@ -28,31 +24,30 @@ public class OrderService : IOrderService
         _paymentService = paymentService;
     }
 
-    /// <summary>
-    /// Cria um novo pedido e processa o pagamento associado.
-    /// </summary>
-    /// <param name="order">Pedido a ser criado</param>
-    /// <returns>Resultado contendo o pedido criado ou mensagem de erro</returns>
     public async Task<Result<Order>> CreateOrderAsync(Order order)
     {
-        // 1. Processar o pagamento usando o serviço dedicado
-        var paymentResult = await _paymentService.ProcessPaymentAsync(order.Payment);
+        var payment = order.Payments.First();
+        var paymentResult = await _paymentService.CreatePaymentAsync(new PaymentGatewayRequest
+        {
+            Amount = payment.Amount,
+            Description = $"Plano {order.Plan.Name}",
+            CustomerName = $"{order.Client.FirstName} {order.Client.LastName}",
+            CustomerEmail = order.Client.Email.ToString(),
+            ExternalReference = order.Id.ToString(),
+            PaymentProvider = payment.PaymentProvider,
+        });
 
-        // 2. Atualizar o pedido com base no resultado do pagamento
         if (!paymentResult.IsSuccess)
         {
-            order.Status = OrderStatus.PaymentFailed;
-            order.Payment.Status = paymentResult.Value?.Status ?? PaymentStatus.Failed;
-            // É importante salvar o estado mesmo em caso de falha para histórico
+            order.Suspend();
+            payment.MarkAsFailed();
         }
         else
         {
-            order.Payment = paymentResult.Value; // Pega o objeto de pagamento atualizado do gateway
-            order.Status = OrderStatus.Processing;
+            payment.AddGatewayResponseDetails(paymentResult.Value, paymentResult.Value);
         }
 
-        // 3. Persistir as entidades
-        await _paymentRepository.AddAsync(order.Payment);
+        await _paymentRepository.AddAsync(payment);
         await _orderRepository.AddAsync(order);
 
         if (!paymentResult.IsSuccess)
@@ -63,11 +58,6 @@ public class OrderService : IOrderService
         return Result<Order>.Success(order);
     }
 
-    /// <summary>
-    /// Obtém o último pedido de um cliente.
-    /// </summary>
-    /// <param name="clientId">ID do cliente</param>
-    /// <returns>Resultado contendo o pedido ou mensagem de erro</returns>
     public async Task<Result<Order>> GetLastOrderByClientAsync(Guid clientId)
     {
         var order = await _orderRepository.GetLastOrderByClientIdAsync(clientId);
@@ -77,39 +67,54 @@ public class OrderService : IOrderService
             : Result<Order>.Failure("Nenhum pedido encontrado para este cliente.");
     }
 
-    /// <summary>
-    /// Processa callback de webhook de pagamento.
-    /// Atualiza o status do pagamento e pedido baseado na confirmação do gateway.
-    /// </summary>
-    /// <param name="orderId">ID do pedido</param>
-    /// <param name="paymentId">ID do pagamento</param>
-    /// <param name="webhookSecret">Secret para validação do webhook</param>
-    /// <returns>Resultado indicando sucesso ou falha</returns>
-    public async Task<Result<bool>> ProcessPaymentCallbackAsync(Guid orderId, string paymentId, string webhookSecret)
+    public async Task<Result<bool>> ProcessPaymentCallbackAsync(string paymentId, string webhookSecret)
     {
         try
         {
-            // 1. Obter o pedido
+            var paymentGateway = _paymentService.GetPaymentGateway(PaymentProvider.MercadoPago);
+            var externalReferenceResult = await paymentGateway.GetPaymentExternalReferenceAsync(paymentId);
+
+            if (!externalReferenceResult.IsSuccess)
+            {
+                return Result<bool>.Failure("Não foi possível obter a referência externa do pagamento.");
+            }
+
+            if (!Guid.TryParse(externalReferenceResult.Value, out var orderId))
+            {
+                return Result<bool>.Failure("Referência externa inválida.");
+            }
+            
             var order = await _orderRepository.GetByIdAsync(orderId);
             if (order == null)
                 return Result<bool>.Failure("Pedido não encontrado.");
 
-            // 2. Obter o pagamento
-            var payment = await _paymentRepository.GetByIdAsync(Guid.Parse(paymentId));
+            var payment = order.Payments.FirstOrDefault(p => p.TransactionId == paymentId || p.Id.ToString() == paymentId);
             if (payment == null)
                 return Result<bool>.Failure("Pagamento não encontrado.");
-
-            // 3. Verificar idempotência - webhook já foi processado?
+            
             if (payment.Status != PaymentStatus.Pending)
             {
-                return Result<bool>.Success(true); // Já processado, retorna sucesso
+                return Result<bool>.Success(true); 
+            }
+            
+            var statusResult = await paymentGateway.GetPaymentStatusAsync(paymentId);
+
+            if (!statusResult.IsSuccess)
+            {
+                return Result<bool>.Failure("Não foi possível obter o status do pagamento.");
             }
 
-            // 4. Atualizar status do pagamento e pedido
-            //payment.Status = PaymentStatus.Approved;
-            //order.Status = OrderStatus.Processing;
+            if (statusResult.Value == PaymentStatus.Approved)
+            {
+                payment.MarkAsApproved(paymentId);
+                order.Activate();
+            }
+            else
+            {
+                payment.MarkAsFailed();
+                order.Suspend();
+            }
 
-            // 5. Persistir alterações
             await _paymentRepository.UpdateAsync(payment);
             await _orderRepository.UpdateAsync(order);
 
@@ -117,7 +122,6 @@ public class OrderService : IOrderService
         }
         catch (Exception ex)
         {
-            // Log do erro deveria ser feito aqui com ILogger
             return Result<bool>.Failure($"Erro ao processar callback de pagamento: {ex.Message}");
         }
     }
