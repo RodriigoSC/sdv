@@ -8,11 +8,11 @@
 
   <ItemGroup>
     <ProjectReference Include="../../2.Application/SDV.Application/SDV.Application.csproj" />
-    <ProjectReference Include="../Infra.Cache/SDV.Infra.Cache.csproj" />
-    <ProjectReference Include="../Infra.RateLimit/SDV.Infra.RateLimit.csproj" />
+    <ProjectReference Include="../SDV.Infra.Cache/SDV.Infra.Cache.csproj" />
     <ProjectReference Include="../SDV.Infra.Consul/SDV.Infra.Consul.csproj" />
     <ProjectReference Include="../SDV.Infra.Data/SDV.Infra.Data.csproj" />
     <ProjectReference Include="../SDV.Infra.Payment/SDV.Infra.Payment.csproj" />
+    <ProjectReference Include="../SDV.Infra.RateLimit/SDV.Infra.RateLimit.csproj" />
     <ProjectReference Include="../SDV.Infra.Vault/SDV.Infra.Vault.csproj" />
   </ItemGroup>
 
