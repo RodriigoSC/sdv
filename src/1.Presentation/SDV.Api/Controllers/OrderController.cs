@@ -9,13 +9,13 @@ namespace SDV.Api.Controllers;
 [ApiController]
 public class OrderController : BaseController
 {
-    private readonly IOrderApplication _subscriptionApplication;
+    private readonly IOrderApplication _orderApplication;
     private readonly ILogger<OrderController> _logger;
 
 
-    public OrderController(IOrderApplication subscriptionApplication, ILogger<OrderController> logger)
+    public OrderController(IOrderApplication orderApplication, ILogger<OrderController> logger)
     {
-        _subscriptionApplication = subscriptionApplication;
+        _orderApplication = orderApplication;
         _logger = logger;
 
     }
@@ -23,7 +23,7 @@ public class OrderController : BaseController
     [HttpPost("subscribe/{planId}")]
     public async Task<IActionResult> Subscribe(string planId, [FromBody] string clientId)
     {
-        var response = await _subscriptionApplication.Subscribe(planId, clientId);
+        var response = await _orderApplication.Subscribe(planId, clientId);
         int statusCode = response.OperationCode;
 
         return StatusCode(statusCode, CreateResponseObjectFromOperationResult(statusCode, response));
@@ -32,7 +32,7 @@ public class OrderController : BaseController
     [HttpGet("client/{clientId}")]
     public async Task<IActionResult> GetOrder(string clientId)
     {
-        var response = await _subscriptionApplication.GetOrderByClientId(clientId);
+        var response = await _orderApplication.GetOrderByClientId(clientId);
         int statusCode = response.OperationCode;
 
         return StatusCode(statusCode, CreateResponseObjectFromOperationResult(statusCode, response));
@@ -68,7 +68,7 @@ public class OrderController : BaseController
 
                 _logger.LogInformation("Processando pagamento ID: {PaymentId}", paymentId);
                 
-                var result = await _subscriptionApplication.ProcessPaymentCallback(paymentId, secret);
+                var result = await _orderApplication.ProcessPaymentCallback(paymentId, secret);
                 
                 if (!result.IsSuccess)
                 {
