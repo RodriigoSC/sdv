@@ -43,4 +43,7 @@ public interface IPaymentService
     /// Obtém a instância do gateway apropriado
     /// </summary>
     IPaymentGateway GetPaymentGateway(PaymentProvider provider);
+
+    Task<Result<(Guid InternalPaymentId, PaymentStatus Status)>> GetPaymentInfoFromGatewayAsync(string gatewayTransactionId);
+
 }

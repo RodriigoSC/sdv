@@ -9,6 +9,8 @@ namespace SDV.Domain.Entities.Payments;
 /// </summary>
 public class Payment : BaseEntity
 {
+    public Guid ClientId { get; private set; }
+
     /// <summary>
     /// ID do pedido associado a este pagamento
     /// </summary>
@@ -54,13 +56,16 @@ public class Payment : BaseEntity
     /// </summary>
     public string? FailureReason { get; private set; }
 
-    public Payment(Guid orderId, decimal amount, PaymentProvider provider)
+    public Payment(Guid clientId, Guid orderId, decimal amount, PaymentProvider provider)
     {
+        if (clientId == Guid.Empty)
+            throw new ArgumentException("ClientId é obrigatório", nameof(clientId));
         if (orderId == Guid.Empty)
             throw new ArgumentException("OrderId é obrigatório", nameof(orderId));
         if (amount <= 0)
             throw new ArgumentException("Valor deve ser maior que zero", nameof(amount));
-
+            
+        ClientId = clientId;
         OrderId = orderId;
         Amount = amount;
         Provider = provider;

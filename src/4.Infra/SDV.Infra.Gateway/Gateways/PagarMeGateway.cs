@@ -4,11 +4,11 @@ using PagarmeApiSDK.Standard;
 using SDV.Domain.Entities.Commons;
 using SDV.Domain.Enums.Payments;
 using SDV.Domain.Interfaces.Payments;
-using SDV.Infra.Payment.Model.PagarMe;
+using SDV.Infra.Gateway.Model.PagarMe;
 using PagarmeApiSDK.Standard.Exceptions;
 using SDV.Domain.Entities.Payments;
 
-namespace SDV.Infra.Payment.Gateways;
+namespace SDV.Infra.Gateway.Gateways;
 
 
 public class PagarMeGateway : IPaymentGateway

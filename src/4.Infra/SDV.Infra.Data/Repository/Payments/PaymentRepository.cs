@@ -1,4 +1,5 @@
-using System;
+
+
 using MongoDB.Driver;
 using SDV.Domain.Entities.Payments;
 using SDV.Domain.Interfaces.Payments;
@@ -15,7 +16,7 @@ public class PaymentRepository : CommonRepository, IPaymentRepository
     {
         _collection = mongoDbRepository.GetCollection<Payment>("Payments");
 
-        MongoDbVerifyAndCreateIndex("Payments", new List<string> { "ClientId" });
+        MongoDbVerifyAndCreateIndex("Payments", new List<string> { "ClientId", "TransactionId" });
     }
 
     public async Task AddAsync(Payment entity)
@@ -37,6 +38,18 @@ public class PaymentRepository : CommonRepository, IPaymentRepository
     public async Task<Payment?> GetByIdAsync(Guid id)
     {
         return await _collection.Find(x => x.Id == id).FirstOrDefaultAsync();
+    }
+
+    public async Task<Payment?> GetPaymentByTransactionIdAsync(string transactionId)
+    {
+        var filter = Builders<Payment>.Filter.Eq(p => p.TransactionId, transactionId);
+        return await _collection.Find(filter).FirstOrDefaultAsync();
+    }
+
+    public async Task<IEnumerable<Payment>> GetPaymentsByClientIdAsync(Guid clientId)
+    {
+        var filter = Builders<Payment>.Filter.Eq(p => p.ClientId, clientId);
+        return await _collection.Find(filter).ToListAsync();
     }
 
     public async Task UpdateAsync(Payment entity)

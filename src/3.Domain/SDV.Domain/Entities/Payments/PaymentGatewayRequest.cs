@@ -8,7 +8,8 @@ namespace SDV.Domain.Entities.Payments;
 public class PaymentGatewayRequest
 {
 
-    public  PaymentProvider PaymentProvider { get; set; }
+    public PaymentProvider PaymentProvider { get; set; }
+    
     /// <summary>
     /// Identificador único da subscrição/pedido (reference externa)
     /// </summary>

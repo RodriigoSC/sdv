@@ -5,7 +5,7 @@ using SDV.Infra.Cache;
 using SDV.Infra.Consul;
 using SDV.Infra.Data.MongoDB;
 using SDV.Infra.Data.Resolver;
-using SDV.Infra.Payment.Resolver;
+using SDV.Infra.Gateway.Resolver;
 using SDV.Infra.RateLimit;
 using SDV.Infra.Vault;
 

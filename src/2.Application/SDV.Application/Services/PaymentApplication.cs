@@ -72,8 +72,7 @@ public class PaymentApplication : IPaymentApplication
 
             var createdOrder = orderResult.Value;
 
-            // Criar pagamento
-            var payment = new Payment(createdOrder.Id, plan.Price, PaymentProvider.MercadoPago);
+            var payment = new Payment(client.Id, createdOrder.Id, plan.Price, PaymentProvider.MercadoPago);
 
             // Gerar request para gateway
             var gatewayRequest = new PaymentGatewayRequest(createdOrder, plan, "", "", "", "", "");
