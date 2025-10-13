@@ -41,10 +41,7 @@ namespace SDV.Api.Controllers
             int statusCode = response.OperationCode;
 
             if (response.IsSuccess && response.Data == null)
-                return NoContent();
-
-            if (statusCode == StatusCodes.Status201Created)
-                return CreatedAtAction(nameof(GetPaymentAsync), new { paymentId = response.Data?.PaymentId }, CreateResponseObjectFromOperationResult(statusCode, response));
+                return NoContent();            
 
             return StatusCode(statusCode, CreateResponseObjectFromOperationResult(statusCode, response));
         }

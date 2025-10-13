@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../3.Domain/SDV.Domain/SDV.Domain.csproj" />
-    <ProjectReference Include="../../4.Infra/SDV.Infra.Payment/SDV.Infra.Payments.csproj" />
+    <ProjectReference Include="../../4.Infra/SDV.Infra.Gateway/SDV.Infra.Gateway.csproj" />
   </ItemGroup>
 
   <ItemGroup>

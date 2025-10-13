@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SDV.Domain.Enums.Payments;
 using SDV.Infra.Gateway.Factories;
 using SDV.Infra.Gateway.Gateways;
+using SDV.Infra.Gateway.Model;
 using SDV.Infra.Gateway.Model.MercadoPago;
 using SDV.Infra.Gateway.Model.PagarMe;
 using SDV.Infra.Vault;
@@ -48,29 +49,25 @@ public static class ResolverIoc
             };
         });
 
-        // Registra os gateways
-        services.AddSingleton<MercadoPagoGateway>();
-        services.AddSingleton<PagarMeGateway>();
-
-        // Registra a fábrica
-        services.AddSingleton<GatewayProviderFactory>();
-
-        // Registra o IPaymentGateway dinamicamente
         services.AddSingleton(sp =>
         {
             var vault = sp.GetRequiredService<IVaultService>();
             var environment = configuration["ASPNETCORE_ENVIRONMENT"] ?? "Development";
             var mountPoint = $"sdv/{environment}";
-            var factory = sp.GetRequiredService<GatewayProviderFactory>();
 
             var providerName = vault.GetKeyAsync("keys", "Payment.Provider", mountPoint).GetAwaiter().GetResult();
+            
             if (Enum.TryParse<PaymentProvider>(providerName, true, out var provider))
             {
-                return factory.GetProvider(provider);
+                return new PaymentProviderSettings { ActiveProvider = provider };
             }
 
             throw new InvalidOperationException("Provedor de pagamento configurado no Vault é inválido.");
         });
+        
+        services.AddSingleton<MercadoPagoGateway>();
+        services.AddSingleton<PagarMeGateway>();
+        services.AddSingleton<GatewayProviderFactory>();
         
         return services;
     }

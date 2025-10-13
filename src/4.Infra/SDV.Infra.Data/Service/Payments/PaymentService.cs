@@ -48,7 +48,7 @@ public class PaymentService : IPaymentService
         }
 
         var (internalPaymentId, status) = paymentInfoResult.Value;
-        if (status != PaymentStatus.Approved)
+        if (status != PaymentStatus.Approved)   
         {
             return Result<Payment>.Failure("O status do pagamento no gateway não é 'Aprovado'.");
         }

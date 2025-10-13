@@ -1,15 +1,14 @@
-using System;
 using SDV.Application.Dtos.Payments;
 using SDV.Application.Interfaces;
 using SDV.Application.Mappers;
 using SDV.Application.Results;
 using SDV.Domain.Entities.Orders;
 using SDV.Domain.Entities.Payments;
-using SDV.Domain.Enums.Payments;
 using SDV.Domain.Interfaces.Clients;
 using SDV.Domain.Interfaces.Orders;
 using SDV.Domain.Interfaces.Payments;
 using SDV.Domain.Interfaces.Plans;
+using SDV.Infra.Gateway.Model;
 
 namespace SDV.Application.Services;
 
@@ -25,6 +24,8 @@ public class PaymentApplication : IPaymentApplication
     private readonly IPlanRepository _planRepository;
     private readonly IPaymentRepository _paymentRepository;
     private readonly IOrderRepository _orderRepository;
+    private readonly PaymentProviderSettings _paymentProviderSettings;
+
 
     public PaymentApplication(
         IPaymentService paymentService,
@@ -32,7 +33,8 @@ public class PaymentApplication : IPaymentApplication
         IClientRepository clientRepository,
         IPlanRepository planRepository,
         IPaymentRepository paymentRepository,
-        IOrderRepository orderRepository)
+        IOrderRepository orderRepository,
+        PaymentProviderSettings paymentProviderSettings)
     {
         _paymentService = paymentService;
         _orderService = orderService;
@@ -40,6 +42,7 @@ public class PaymentApplication : IPaymentApplication
         _planRepository = planRepository;
         _paymentRepository = paymentRepository;
         _orderRepository = orderRepository;
+        _paymentProviderSettings = paymentProviderSettings;
     }
 
     public async Task<OperationResult<PaymentCheckoutResponseDto>> InitiatePaymentCheckoutAsync(InitiatePaymentRequestDto request)
@@ -72,7 +75,7 @@ public class PaymentApplication : IPaymentApplication
 
             var createdOrder = orderResult.Value;
 
-            var payment = new Payment(client.Id, createdOrder.Id, plan.Price, PaymentProvider.MercadoPago);
+            var payment = new Payment(client.Id, createdOrder.Id, plan.Price, _paymentProviderSettings.ActiveProvider);
 
             // Gerar request para gateway
             var gatewayRequest = new PaymentGatewayRequest(createdOrder, plan, "", "", "", "", "");
@@ -85,7 +88,6 @@ public class PaymentApplication : IPaymentApplication
             payment.SetCheckoutUrl(checkoutResult.Value);
             createdOrder.AddPayment(payment);
 
-            // Persistir
             await _paymentRepository.AddAsync(payment);
             await _orderRepository.UpdateAsync(createdOrder);
 
@@ -124,7 +126,7 @@ public class PaymentApplication : IPaymentApplication
             // Processar aprovação
             var result = await _paymentService.ProcessPaymentApprovalAsync(payment.Id.ToString());
             if (!result.IsSuccess)
-                return OperationResult<PaymentDto>.Failed(null, result.Error, 400);
+                return OperationResult<PaymentDto>.Failed(null, result.Error ?? "", 400);
 
             var updatedPayment = result.Value;
 
@@ -151,7 +153,7 @@ public class PaymentApplication : IPaymentApplication
             var result = await _paymentService.ProcessPaymentFailureAsync(callback.PaymentId, callback.Status ?? "Motivo desconhecido");
 
             if (!result.IsSuccess)
-                return OperationResult<bool>.Failed(false, result.Error, 400);
+                return OperationResult<bool>.Failed(false, result.Error ?? "", 400);
 
             return OperationResult<bool>.Succeeded(true, "Falha de pagamento processada", 200);
         }
